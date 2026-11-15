@@ -117,6 +117,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .compra { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; font-size: .9rem; padding: 7px 0; border-bottom: 1px dashed var(--line); }
 .compra button, .link { border: 0; background: none; color: var(--accent); padding: 4px 6px; font-weight: 600; font-size: .88rem; }
 .link { padding: 8px 0; text-align: left; }
+.parc { color: var(--muted); font-size: .8rem; white-space: nowrap; }
 .vazio-lista { padding: 10px 14px 14px; margin: 0; color: var(--muted); font-size: .9rem; }
 
 .acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -300,7 +301,7 @@ function normaliza(d) {
     const [a, mm] = k.split('-').map(Number);
     n.meses[k] = { ano: a, mes: mm, iniciado: m.iniciado !== false,
       contas: (m.contas || []).filter((c) => c && c.nome).map((c) => { const x = { id: String(c.id || novoId('c')), nome: String(c.nome), valor: +c.valor || 0, pago: !!c.pago }; if (c.cartao) x.cartao = String(c.cartao); if (c.dia) x.dia = +c.dia; if (c.avulsa) x.avulsa = true; return x; }),
-      compras: (m.compras || []).filter((c) => c && c.cartao).map((c) => { const x = { id: String(c.id || novoId('p')), cartao: String(c.cartao), desc: String(c.desc || ''), valor: +c.valor || 0 }; if (c.parcela) x.parcela = String(c.parcela); return x; }) };
+      compras: (m.compras || []).filter((c) => c && c.cartao).map((c) => { const x = { id: String(c.id || novoId('p')), cartao: String(c.cartao), desc: String(c.desc || ''), valor: +c.valor || 0 }; if (c.parcela) x.parcela = String(c.parcela); if (c.grupo) x.grupo = String(c.grupo); return x; }) };
   }
   return n;
 }
@@ -421,7 +422,7 @@ function linha(d, c) {
   if (c.cartao && ui.aberto[c.id]) {
     const box = el('div', { class: 'compras' });
     d.compras.filter((x) => x.cartao === c.cartao).forEach((p) => box.append(el('div', { class: 'compra' },
-      el('span', { text: p.desc + (p.parcela ? ' · ' + p.parcela : '') }), el('span', { class: 'num', text: brl.format(p.valor) }),
+      el('span', {}, p.desc, p.parcela ? el('small', { class: 'parc', text: ' · parcela ' + p.parcela.replace('/', ' de ') }) : null), el('span', { class: 'num', text: brl.format(p.valor) }),
       el('button', { type: 'button', text: 'Editar', onclick: () => formCompra(d, p, c.cartao) }))));
     box.append(el('button', { type: 'button', class: 'link', text: '+ Compra neste cartão', onclick: () => formCompra(d, null, c.cartao) }));
     item.append(box);
@@ -507,33 +508,102 @@ function formConta(d, c) {
   }, extras);
 }
 
+function membrosGrupo(g) {
+  const out = [];
+  Object.keys(dados.meses).sort().forEach((k) => dados.meses[k].compras.forEach((p) => { if (p.grupo === g) out.push({ k, p }); }));
+  return out;
+}
+function numParcela(p) { const m = /^(\d+)\s*\/\s*(\d+)$/.exec(p.parcela || ''); return m ? [+m[1], +m[2]] : [1, 1]; }
+function recalcMeses(ks, cartoesVelhos) {
+  new Set(ks).forEach((k) => {
+    const d = dados.meses[k]; if (!d) return;
+    acertaFaturas(d);
+    (cartoesVelhos || []).forEach((id) => {
+      const f = d.contas.find((x) => x.cartao === id);
+      if (f && !d.compras.some((x) => x.cartao === id)) { if (d.iniciado) f.valor = 0; else d.contas = d.contas.filter((x) => x !== f); }
+    });
+    if (!d.iniciado && !d.contas.length && !d.compras.length) delete dados.meses[k];
+  });
+}
 function formCompra(d, p, cartaoId) {
   if (!dados.cartoes.length) { avisa('Cadastre um cartão primeiro.'); formCartao(null); return; }
   const sel = el('select', { id: 'fCartao' }, ...dados.cartoes.slice().sort((a, b) => (a.dia || 99) - (b.dia || 99)).map((c) => el('option', { value: c.id, text: c.nome + (c.dia ? ' · dia ' + c.dia : '') })));
   sel.value = (p && p.cartao) || cartaoId || dados.cartoes[0].id;
-  const campos = [el('label', { for: 'fCartao' }, 'Cartão', sel), campo('O que foi comprado', 'fDesc', { value: p ? p.desc : '', maxlength: 80, placeholder: 'Ex.: Mercado, Tênis' })];
-  if (p) campos.push(campo('Valor neste mês (R$)', 'fValor', { value: paraCampo(p.valor), inputmode: 'decimal' }));
-  else campos.push(el('div', { class: 'dupla' }, campo('Valor da parcela (R$)', 'fValor', { inputmode: 'decimal', placeholder: '0,00' }), campo('Parcelas', 'fParc', { type: 'number', inputmode: 'numeric', min: 1, max: 60, value: 1 })),
-    el('p', { class: 'nota', text: 'Com mais de uma parcela, a compra entra também nos meses seguintes, a partir de ' + NOMES_MES[d.mes - 1] + '.' }));
-  const extras = p ? [el('button', { type: 'button', class: 'btn perigo', text: 'Apagar esta compra deste mês', onclick: () => {
-    const n = copia(d); n.compras = n.compras.filter((x) => x.id !== p.id); acertaFaturas(n);
-    const f = n.contas.find((x) => x.cartao === p.cartao); if (f && !n.compras.some((x) => x.cartao === p.cartao)) f.valor = 0;
-    guardaMes(n); fecha(); } })] : null;
+  const [pi, pn] = p ? numParcela(p) : [1, 1];
+  const campos = [el('label', { for: 'fCartao' }, 'Cartão', sel), campo('O que foi comprado', 'fDesc', { value: p ? p.desc : '', maxlength: 80, placeholder: 'Ex.: Mercado, Tênis' }),
+    campo('Valor da parcela (R$)', 'fValor', { value: p ? paraCampo(p.valor) : '', inputmode: 'decimal', placeholder: '0,00' })];
+  if (p) {
+    campos.push(el('div', { class: 'dupla' }, campo('Esta é a parcela nº', 'fNum', { type: 'number', inputmode: 'numeric', min: 1, max: 99, value: pi }), campo('Total de parcelas', 'fParc', { type: 'number', inputmode: 'numeric', min: 1, max: 99, value: pn })));
+    if (p.grupo || pn > 1) campos.push(marcar('Aplicar nome, cartão e valor nesta e nas próximas parcelas', 'fTodas', true));
+    campos.push(el('p', { class: 'nota', text: 'Se aumentar o total, as parcelas que faltam entram nos meses seguintes. Se diminuir, as que sobram saem.' }));
+  } else campos.push(campo('Quantidade de parcelas', 'fParc', { type: 'number', inputmode: 'numeric', min: 1, max: 99, value: 1 }),
+    el('p', { class: 'nota', text: 'Com mais de uma parcela, a compra entra também nos meses seguintes, a partir de ' + NOMES_MES[d.mes - 1] + ', numerada (1/10, 2/10…).' }));
+  let extras = null;
+  if (p) {
+    const k0 = chave(d.ano, d.mes);
+    const apagar = (proximas) => {
+      const membros = p.grupo ? membrosGrupo(p.grupo) : [{ k: k0, p }];
+      const pos = Math.max(0, membros.findIndex((x) => x.p.id === p.id));
+      const sai = proximas ? membros.slice(pos) : [membros[pos]];
+      const ids = new Set(sai.map((x) => x.p.id));
+      sai.forEach(({ k }) => { const m = dados.meses[k]; m.compras = m.compras.filter((x) => !ids.has(x.id)); });
+      if (proximas && p.grupo) membros.slice(0, pos).forEach(({ p: q }) => { const [i] = numParcela(q); q.parcela = i + '/' + pos; });
+      recalcMeses(sai.map((x) => x.k), [p.cartao]); salvar(); desenha(); fecha();
+      avisa(sai.length > 1 ? sai.length + ' parcelas apagadas.' : 'Compra apagada.');
+    };
+    extras = [el('button', { type: 'button', class: 'btn perigo', text: p.grupo ? 'Apagar só esta parcela' : 'Apagar esta compra', onclick: () => apagar(false) })];
+    if (p.grupo && membrosGrupo(p.grupo).length > 1) extras.push(el('button', { type: 'button', class: 'btn perigo', text: 'Apagar esta e as próximas parcelas', onclick: () => apagar(true) }));
+  }
   abreFolha(p ? 'Editar compra' : 'Compra no cartão', campos, () => {
     const desc = $('fDesc').value.trim(); if (!desc) return 'Digite o que foi comprado.';
     const valor = dinheiro($('fValor').value); if (!(valor > 0)) return 'Digite o valor, por exemplo 99,90.';
     const cart = $('fCartao').value;
-    if (p) { const n = copia(d); Object.assign(n.compras.find((y) => y.id === p.id), { desc, valor, cartao: cart }); n.iniciado = true; guardaMes(acertaFaturas(n)); return; }
-    const parc = Math.max(1, Math.min(60, parseInt($('fParc').value, 10) || 1));
-    for (let i = 0; i < parc; i++) {
-      const [a, m] = somaMes(d.ano, d.mes, i);
-      const n = copia(mesDoc(a, m) || vazioMes(a, m));
-      if (i === 0) n.iniciado = true;
-      const x = { id: novoId('p'), cartao: cart, desc, valor }; if (parc > 1) x.parcela = (i + 1) + '/' + parc;
-      n.compras.push(x); acertaFaturas(n); dados.meses[chave(a, m)] = n;
+    const total = parseInt($('fParc').value, 10);
+    if (!(total >= 1 && total <= 99)) return 'A quantidade de parcelas vai de 1 a 99.';
+    if (!p) {
+      const g = total > 1 ? novoId('g') : null;
+      for (let i = 0; i < total; i++) {
+        const [a, m] = somaMes(d.ano, d.mes, i);
+        const n = mesDoc(a, m) || vazioMes(a, m);
+        if (i === 0) n.iniciado = true;
+        const x = { id: novoId('p'), cartao: cart, desc, valor }; if (g) { x.parcela = (i + 1) + '/' + total; x.grupo = g; }
+        n.compras.push(x); acertaFaturas(n); dados.meses[chave(a, m)] = n;
+      }
+      const f = mesDoc(d.ano, d.mes).contas.find((c) => c.cartao === cart); if (f) ui.aberto[f.id] = true;
+      salvar(); desenha(); avisa(total > 1 ? 'Compra lançada em ' + total + ' parcelas.' : 'Compra lançada.'); return;
     }
-    const f = mesDoc(d.ano, d.mes).contas.find((c) => c.cartao === cart); if (f) ui.aberto[f.id] = true;
-    salvar(); desenha(); avisa(parc > 1 ? 'Compra lançada em ' + parc + ' meses.' : 'Compra lançada.');
+    const num = parseInt($('fNum').value, 10);
+    if (!(num >= 1 && num <= total)) return 'O número da parcela tem que estar entre 1 e o total.';
+    const k0 = chave(d.ano, d.mes);
+    const g = p.grupo || novoId('g');
+    const membros = p.grupo ? membrosGrupo(p.grupo) : [{ k: k0, p: dados.meses[k0].compras.find((x) => x.id === p.id) }];
+    const pos = Math.max(0, membros.findIndex((x) => x.p.id === p.id));
+    const todas = $('fTodas') ? $('fTodas').checked : true;
+    const tocados = membros.map((x) => x.k), velhos = [p.cartao];
+    membros.forEach(({ p: q }, r) => {
+      if (r === pos || (todas && r > pos)) Object.assign(q, { desc, valor, cartao: cart });
+      q.grupo = g;
+    });
+    // numera pela posição: esta parcela recebe "num"
+    const sai = new Set();
+    membros.forEach(({ k, p: q }, r) => { const i = num + (r - pos); if (i < 1 || i > total) sai.add(q.id); else q.parcela = i + '/' + total; });
+    membros.forEach(({ k }) => { const m = dados.meses[k]; m.compras = m.compras.filter((x) => !sai.has(x.id)); });
+    const ficam = membros.filter((x) => !sai.has(x.p.id));
+    const ultimo = ficam[ficam.length - 1];
+    const i = ultimo ? numParcela(ultimo.p)[0] : total;
+    const falta = total - i;
+    if (ultimo && falta > 0) {
+      const [ua, um] = ultimo.k.split('-').map(Number);
+      for (let s = 1; s <= falta; s++) {
+        const [a, m] = somaMes(ua, um, s); const k = chave(a, m);
+        const n = mesDoc(a, m) || vazioMes(a, m); dados.meses[k] = n;
+        n.compras.push({ id: novoId('p'), cartao: ultimo.p.cartao, desc: ultimo.p.desc, valor: ultimo.p.valor, parcela: (i + s) + '/' + total, grupo: g });
+        tocados.push(k);
+      }
+    }
+    if (total === 1) ficam.forEach(({ p: q }) => { delete q.parcela; delete q.grupo; });
+    dados.meses[k0].iniciado = true;
+    recalcMeses(tocados, velhos); salvar(); desenha();
   }, extras);
 }
 
