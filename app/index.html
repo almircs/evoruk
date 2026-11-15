@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evoruk</title>
+<meta name="description" content="Controle mensal das contas da casa: lançar, dar baixa e ver o ano inteiro.">
+<meta name="theme-color" content="#0E5E63">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Evoruk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+/* Evoruk — layout: barra do mês no topo, conteúdo em cartões, abas embaixo no celular e na lateral no computador */
+:root {
+  --bg: #EDF1F3;
+  --panel: #FFFFFF;
+  --ink: #15212B;
+  --muted: #5A6874;
+  --line: #D9E0E5;
+  --accent: #0E5E63;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCEFEE;
+  --danger: #B93A26;
+  --pago: #FFE45C;
+  --pago-ink: #3B3000;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --r: 14px;
+  color-scheme: light;
+}
+:root[data-pago="verde"] { --pago: #A6EBB4; --pago-ink: #0F3B1B; }
+:root[data-pago="azul"] { --pago: #A9D2FF; --pago-ink: #0B2A4A; }
+:root[data-pago="rosa"] { --pago: #FFC0DA; --pago-ink: #4A0F27; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1418; --panel: #172027; --ink: #E5ECF0; --muted: #94A3AF; --line: #27333C;
+    --accent: #4CC2B6; --accent-ink: #062523; --accent-soft: #163B3A; --danger: #FF8D78;
+    --pago: #5E5214; --pago-ink: #FFF3A6; color-scheme: dark;
+  }
+  :root:not([data-theme="light"])[data-pago="verde"] { --pago: #1F5130; --pago-ink: #C9F7D3; }
+  :root:not([data-theme="light"])[data-pago="azul"] { --pago: #1C3F66; --pago-ink: #D3E7FF; }
+  :root:not([data-theme="light"])[data-pago="rosa"] { --pago: #5A2340; --pago-ink: #FFD6E7; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; -webkit-text-size-adjust: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+[hidden] { display: none !important; }
+
+/* estrutura */
+.casca { min-height: 100%; display: flex; flex-direction: column; }
+.topo { position: sticky; top: 0; z-index: 10; background: var(--accent); color: var(--accent-ink); padding: calc(env(safe-area-inset-top) + 8px) 16px 10px; }
+.topo-in { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.marca { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1.15rem; letter-spacing: .02em; }
+.marca svg { width: 28px; height: 28px; }
+.periodo { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.periodo h1 { margin: 0; font-size: 1.05rem; font-weight: 700; min-width: 9.5em; text-align: center; }
+.seta { width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.16); color: inherit; font-size: 1.35rem; line-height: 1; }
+.corpo { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; display: flex; gap: 20px; padding: 16px 16px calc(96px + env(safe-area-inset-bottom)); }
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.abas { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--panel); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+.abas button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; font-size: .72rem; font-weight: 600; color: var(--muted); border-radius: 10px; }
+.abas button svg { width: 24px; height: 24px; }
+.abas button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+@media (min-width: 900px) {
+  .abas { position: sticky; top: 76px; align-self: flex-start; flex-direction: column; display: flex; width: 190px; border: 1px solid var(--line); border-radius: var(--r); padding: 8px; gap: 4px; }
+  .abas button { flex-direction: row; gap: 10px; padding: 10px 12px; font-size: .95rem; justify-content: flex-start; }
+  .corpo { padding-bottom: 32px; }
+}
+
+/* blocos */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+.resumo { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.resumo-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rotulo { font-size: .78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.grande { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+.grande.ok { color: var(--accent); }
+.mini { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mini > div { display: flex; flex-direction: column; gap: 2px; }
+.mini b { font-size: 1.05rem; }
+.mini .pg b { background: var(--pago); color: var(--pago-ink); border-radius: 5px; padding: 0 5px; align-self: flex-start; }
+.barra { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.barra i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.nota { margin: 0; font-size: .85rem; color: var(--muted); }
+.nota.alerta { color: var(--danger); font-weight: 600; }
+.filtro { display: flex; gap: 4px; background: var(--line); padding: 3px; border-radius: 10px; align-self: flex-start; }
+.filtro button { border: 0; background: none; padding: 6px 14px; border-radius: 8px; font-size: .88rem; font-weight: 600; color: var(--muted); }
+.filtro button[aria-pressed="true"] { background: var(--panel); color: var(--ink); }
+
+.lista { overflow: hidden; }
+.lista-tit { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 14px 6px; }
+.lista-tit h2 { margin: 0; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.lista-tit span { font-size: .85rem; color: var(--muted); }
+.item { border-top: 1px solid var(--line); }
+.linha { display: grid; grid-template-columns: 34px 1fr auto 38px; align-items: center; gap: 8px; padding: 6px 4px 6px 12px; min-height: 58px; }
+.item.pago .linha { background: var(--pago); color: var(--pago-ink); }
+.check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--muted); background: transparent; display: grid; place-items: center; padding: 0; color: transparent; }
+.check svg { width: 16px; height: 16px; }
+.item.pago .check { background: var(--pago-ink); border-color: var(--pago-ink); color: var(--pago); }
+.nome { border: 0; background: none; text-align: left; padding: 8px 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.nome strong { font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; gap: 6px; }
+.nome small { color: var(--muted); font-size: .8rem; }
+.item.pago .nome small { color: inherit; opacity: .78; }
+.nome small.atraso { color: var(--danger); font-weight: 700; }
+.ponto { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.valor { font-weight: 700; text-align: right; white-space: nowrap; }
+.edita { width: 36px; height: 36px; border: 0; background: none; border-radius: 8px; color: var(--muted); display: grid; place-items: center; }
+.edita svg { width: 18px; height: 18px; }
+.item.pago .edita { color: inherit; }
+.compras { background: var(--bg); padding: 4px 14px 10px 54px; }
+.compra { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; font-size: .9rem; padding: 7px 0; border-bottom: 1px dashed var(--line); }
+.compra button, .link { border: 0; background: none; color: var(--accent); padding: 4px 6px; font-weight: 600; font-size: .88rem; }
+.link { padding: 8px 0; text-align: left; }
+.vazio-lista { padding: 10px 14px 14px; margin: 0; color: var(--muted); font-size: .9rem; }
+
+.acoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 12px 14px; font-weight: 700; min-height: 48px; }
+.btn.forte { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.perigo { color: var(--danger); }
+.btn:disabled { opacity: .5; cursor: default; }
+.vazio { padding: 22px 18px; display: flex; flex-direction: column; gap: 12px; text-align: center; align-items: stretch; }
+.vazio p { margin: 0; color: var(--muted); }
+
+@media (min-width: 900px) {
+
+  .acoes { grid-template-columns: 1fr; }
+}
+.mes-grid { display: flex; flex-direction: column; gap: 14px; }
+.mes-grid .principal { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.mes-grid .lado { display: contents; }
+.mes-grid .lado .resumo { order: -1; }
+.mes-grid .lado .acoes { order: 2; }
+@media (min-width: 900px) {
+  .mes-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+  .mes-grid .lado { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 14px; }
+}
+
+/* ano */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.kpi { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.kpi b { font-size: 1.2rem; }
+.kpi small { color: var(--muted); font-size: .8rem; }
+.sobe { color: var(--danger); } .desce { color: var(--accent); }
+.grafico { padding: 14px; }
+.grafico svg { width: 100%; height: auto; display: block; }
+.grafico text { fill: var(--muted); font-size: 11px; font-family: var(--font); }
+.legenda { display: flex; gap: 14px; font-size: .8rem; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+.legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tabela-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabela { border-collapse: separate; border-spacing: 0; font-size: .85rem; min-width: 100%; }
+.tabela th, .tabela td { padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; text-align: right; }
+.tabela th { color: var(--muted); font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; background: var(--panel); }
+.tabela .fixa { position: sticky; left: 0; background: var(--panel); text-align: left; z-index: 1; max-width: 180px; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--line); }
+.tabela td.p { background: var(--pago); color: var(--pago-ink); }
+.tabela td.a { color: var(--danger); font-weight: 600; }
+.tabela td.clica { cursor: pointer; }
+.tabela tfoot td { font-weight: 800; border-bottom: 0; }
+.tabela tr.sep td { background: var(--bg); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); text-align: left; font-weight: 700; }
+.secao { padding: 14px 14px 6px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.secao h2 { margin: 0; font-size: 1rem; }
+
+/* cartões */
+.cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cc { border: 2px solid transparent; text-align: left; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.cc[aria-pressed="true"] { border-color: var(--accent); }
+.cc .faixa { height: 6px; border-radius: 3px; margin-bottom: 6px; }
+.cc strong { font-size: 1rem; }
+.cc small { color: var(--muted); font-size: .8rem; }
+
+/* backup */
+.bloco { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.bloco h2 { margin: 0; font-size: 1.05rem; }
+.bloco .acoes { grid-template-columns: 1fr; }
+@media (min-width: 600px) { .bloco .acoes { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); } }
+.fatos { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: .92rem; }
+.fatos dt { color: var(--muted); } .fatos dd { margin: 0; font-weight: 600; }
+.cores { display: flex; gap: 10px; flex-wrap: wrap; }
+.cor { border: 2px solid var(--line); border-radius: 10px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; background: var(--panel); font-weight: 600; }
+.cor i { width: 18px; height: 18px; border-radius: 5px; }
+.cor[aria-pressed="true"] { border-color: var(--accent); }
+textarea.saida { width: 100%; min-height: 120px; border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-family: ui-monospace, Menlo, monospace; font-size: .75rem; background: var(--bg); color: var(--ink); }
+
+/* folha (formulários) */
+.fundo { position: fixed; inset: 0; background: rgba(8, 14, 20, .5); z-index: 30; display: flex; align-items: flex-end; justify-content: center; }
+.folha { background: var(--panel); width: 100%; max-width: 520px; border-radius: 20px 20px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; max-height: 92%; overflow-y: auto; }
+@media (min-width: 700px) { .fundo { align-items: center; } .folha { border-radius: 20px; } }
+.folha h3 { margin: 0; font-size: 1.15rem; }
+.folha label { display: flex; flex-direction: column; gap: 5px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.folha input, .folha select { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--bg); font-size: 1rem; color: var(--ink); width: 100%; }
+.folha .dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.folha .marcar { flex-direction: row; align-items: center; gap: 10px; color: var(--ink); font-size: .95rem; font-weight: 500; }
+.folha .marcar input { width: 22px; height: 22px; flex: none; }
+.folha .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.folha .erro { color: var(--danger); margin: 0; font-size: .88rem; font-weight: 600; }
+.aviso { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: .9rem; z-index: 40; max-width: 90%; text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .linha { transition: background-color .15s ease; } }
+</style>
+</head>
+<body>
+<div class="casca">
+  <header class="topo">
+    <div class="topo-in">
+      <div class="marca" aria-label="Evoruk">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="8" fill="#FFE45C"/><path d="M9 16.5l4.5 4.5L23 11.5" fill="none" stroke="#0E5E63" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Evoruk</span>
+      </div>
+      <div class="periodo">
+        <button type="button" class="seta" id="ant" aria-label="Anterior">‹</button>
+        <h1 id="titulo">…</h1>
+        <button type="button" class="seta" id="prox" aria-label="Próximo">›</button>
+      </div>
+    </div>
+  </header>
+  <div class="corpo">
+    <nav class="abas" aria-label="Seções">
+      <button type="button" data-aba="mes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4M8 14l2.5 2.5L16 12"/></svg>Mês</button>
+      <button type="button" data-aba="ano"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Ano</button>
+      <button type="button" data-aba="cartoes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20M6 15h4"/></svg>Cartões</button>
+      <button type="button" data-aba="backup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Backup</button>
+    </nav>
+    <main id="tela"><p class="nota">Abrindo…</p></main>
+  </div>
+</div>
+<div class="fundo" id="fundo" hidden><form class="folha" id="folha" autocomplete="off" novalidate></form></div>
+<div class="aviso" id="aviso" role="status" hidden></div>
+<input type="file" id="arquivo" accept=".json,application/json" hidden>
+
+<script>
+(() => {
+'use strict';
+const APP = 'evoruk', VERSAO = 1;
+const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MES3 = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const CORES_PAGO = { amarelo: ['Amarelo', '#FFE45C'], verde: ['Verde', '#A6EBB4'], azul: ['Azul', '#A9D2FF'], rosa: ['Rosa', '#FFC0DA'] };
+const CORES_CARTAO = ['#0E5E63','#8A05BE','#FF7A00','#1E88E5','#E53935','#11A35B','#A64AC9','#546E7A','#1A237E','#C2185B'];
+const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const brl0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const $ = (id) => document.getElementById(id);
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function el(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else if (k === 'style') e.style.cssText = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c);
+  return e;
+}
+function svg(tag, attrs, ...kids) { const e = document.createElementNS(SVG_NS, tag); for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v); kids.forEach((c) => c != null && e.append(c)); return e; }
+const icone = (d) => { const s = svg('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': '2.6', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }); s.append(svg('path', { d })); return s; };
+const ICO_CHECK = 'M5 12.5l4.5 4.5L19 7.5', ICO_LAPIS = 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4';
+const novoId = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const chave = (a, m) => a + '-' + String(m).padStart(2, '0');
+const somaMes = (a, m, n) => { const t = a * 12 + (m - 1) + n; return [Math.floor(t / 12), (t % 12) + 1]; };
+const r2 = (v) => Math.round(v * 100) / 100;
+const copia = (x) => JSON.parse(JSON.stringify(x));
+function dinheiro(txt) { let s = String(txt).trim().replace(/[R$\s]/g, ''); if (!s) return NaN; if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const v = Number(s); return Number.isFinite(v) ? r2(v) : NaN; }
+const paraCampo = (v) => (v == null ? '' : String(v).replace('.', ','));
+
+/* ---------------- armazenamento no aparelho (IndexedDB, com localStorage de reserva) ---------------- */
+const IDB = {
+  db: null,
+  abrir() { return this.db || (this.db = new Promise((ok, erro) => { const r = indexedDB.open(APP, 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => erro(r.error); })); },
+  async ler(k) { const db = await this.abrir(); return new Promise((ok, erro) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => ok(q.result); q.onerror = () => erro(q.error); }); },
+  async gravar(k, v) { const db = await this.abrir(); return new Promise((ok, erro) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => ok(); t.onerror = () => erro(t.error); }); },
+};
+const LS = APP + '-dados-v1';
+async function carregar() {
+  try { const v = await IDB.ler('dados'); if (v) return v; } catch (e) {}
+  try { const s = localStorage.getItem(LS); if (s) return JSON.parse(s); } catch (e) {}
+  return null;
+}
+let gravando = null, pendente = false;
+function salvar() {
+  pendente = true;
+  if (gravando) return;
+  gravando = setTimeout(async () => {
+    gravando = null; pendente = false;
+    const v = copia(dados);
+    try { await IDB.gravar('dados', v); } catch (e) { try { localStorage.setItem(LS, JSON.stringify(v)); } catch (e2) { avisa('Não consegui guardar neste aparelho. Faça um backup agora.'); } }
+  }, 250);
+}
+window.addEventListener('pagehide', () => { if (pendente) { try { localStorage.setItem(LS, JSON.stringify(dados)); } catch (e) {} } });
+
+function dadosVazios() { return { app: APP, versao: VERSAO, config: { corPago: 'amarelo', ultimoBackup: null }, cartoes: [], meses: {} }; }
+function normaliza(d) {
+  const n = dadosVazios();
+  if (!d || typeof d !== 'object') return n;
+  n.config = Object.assign(n.config, d.config || {});
+  n.cartoes = Array.isArray(d.cartoes) ? d.cartoes.filter((c) => c && c.id && c.nome).map((c, i) => ({ id: String(c.id), nome: String(c.nome), dia: c.dia ? +c.dia : null, cor: c.cor || CORES_CARTAO[i % CORES_CARTAO.length] })) : [];
+  for (const [k, m] of Object.entries(d.meses || {})) {
+    if (!/^\d{4}-\d{2}$/.test(k) || !m) continue;
+    const [a, mm] = k.split('-').map(Number);
+    n.meses[k] = { ano: a, mes: mm, iniciado: m.iniciado !== false,
+      contas: (m.contas || []).filter((c) => c && c.nome).map((c) => { const x = { id: String(c.id || novoId('c')), nome: String(c.nome), valor: +c.valor || 0, pago: !!c.pago }; if (c.cartao) x.cartao = String(c.cartao); if (c.dia) x.dia = +c.dia; if (c.avulsa) x.avulsa = true; return x; }),
+      compras: (m.compras || []).filter((c) => c && c.cartao).map((c) => { const x = { id: String(c.id || novoId('p')), cartao: String(c.cartao), desc: String(c.desc || ''), valor: +c.valor || 0 }; if (c.parcela) x.parcela = String(c.parcela); return x; }) };
+  }
+  return n;
+}
+
+/* ---------------- estado ---------------- */
+const hoje = new Date();
+const ui = { aba: 'mes', ano: hoje.getFullYear(), mes: hoje.getMonth() + 1, filtro: 'todas', aberto: {}, cartaoSel: null, importar: null, saida: '' };
+let dados = dadosVazios();
+
+const mesDoc = (a, m) => dados.meses[chave(a, m)] || null;
+const cartao = (id) => dados.cartoes.find((c) => c.id === id) || null;
+const nomeCartao = (id) => (cartao(id) || { nome: id }).nome;
+const vazioMes = (a, m) => ({ ano: a, mes: m, iniciado: false, contas: [], compras: [] });
+function acertaFaturas(d) {
+  const ids = new Set(d.compras.map((c) => c.cartao));
+  ids.forEach((id) => {
+    const soma = r2(d.compras.filter((c) => c.cartao === id).reduce((s, c) => s + c.valor, 0));
+    let conta = d.contas.find((c) => c.cartao === id);
+    if (!conta) { conta = { id: novoId('c'), nome: nomeCartao(id), cartao: id, valor: 0, pago: false }; d.contas.push(conta); }
+    conta.valor = soma;
+  });
+  return d;
+}
+function guardaMes(d) { dados.meses[chave(d.ano, d.mes)] = d; salvar(); desenha(); }
+function totais(d) {
+  const total = r2(d.contas.reduce((s, c) => s + c.valor, 0));
+  const pago = r2(d.contas.filter((c) => c.pago).reduce((s, c) => s + c.valor, 0));
+  return { total, pago, falta: r2(total - pago), qtd: d.contas.length, qtdPago: d.contas.filter((c) => c.pago).length };
+}
+function diaDe(c) { return c.cartao ? (cartao(c.cartao) || {}).dia || null : c.dia || null; }
+function atrasada(d, c) {
+  if (c.pago || !c.valor) return false;
+  const k = chave(d.ano, d.mes), kh = chave(hoje.getFullYear(), hoje.getMonth() + 1);
+  if (k < kh) return true;
+  if (k > kh) return false;
+  const dia = diaDe(c); return !!dia && dia < hoje.getDate();
+}
+function avisa(t) { const a = $('aviso'); a.textContent = t; a.hidden = false; clearTimeout(avisa.t); avisa.t = setTimeout(() => { a.hidden = true; }, 2600); }
+
+/* ---------------- desenho geral ---------------- */
+function desenha() {
+  document.documentElement.dataset.pago = dados.config.corPago || 'amarelo';
+  document.querySelectorAll('.abas button').forEach((b) => b.setAttribute('aria-current', b.dataset.aba === ui.aba ? 'page' : 'false'));
+  const porAno = ui.aba === 'ano' || ui.aba === 'cartoes';
+  $('titulo').textContent = ui.aba === 'mes' ? NOMES_MES[ui.mes - 1] + ' ' + ui.ano : porAno ? String(ui.ano) : 'Backup';
+  $('ant').hidden = $('prox').hidden = ui.aba === 'backup';
+  $('ant').setAttribute('aria-label', ui.aba === 'mes' ? 'Mês anterior' : 'Ano anterior');
+  $('prox').setAttribute('aria-label', ui.aba === 'mes' ? 'Próximo mês' : 'Próximo ano');
+  const t = { mes: telaMes, ano: telaAno, cartoes: telaCartoes, backup: telaBackup }[ui.aba]();
+  $('tela').replaceChildren(...[].concat(t));
+}
+
+/* ---------------- MÊS ---------------- */
+function telaMes() {
+  const d = mesDoc(ui.ano, ui.mes);
+  if (!d || (!d.iniciado && !d.contas.length)) return [mesVazio()];
+  const t = totais(d);
+  const pct = t.total ? Math.round(t.pago / t.total * 100) : 0;
+  const atrasadas = d.contas.filter((c) => atrasada(d, c));
+  const proxima = d.contas.filter((c) => !c.pago && c.valor && diaDe(c)).sort((a, b) => diaDe(a) - diaDe(b))[0];
+  const resumo = el('section', { class: 'card resumo', 'aria-label': 'Resumo do mês' },
+    el('div', { class: 'resumo-top' },
+      el('div', {}, el('div', { class: 'rotulo', text: t.falta > 0 ? 'Falta pagar' : 'Situação' }),
+        el('div', { class: 'grande num' + (t.falta > 0 ? '' : ' ok'), text: t.falta > 0 ? brl.format(t.falta) : 'Tudo pago' })),
+      el('div', { class: 'nota', text: t.qtdPago + ' de ' + t.qtd + ' pagas' })),
+    el('div', { class: 'barra', role: 'img', 'aria-label': pct + '% pago' }, el('i', { style: 'width:' + pct + '%' })),
+    el('div', { class: 'mini' },
+      el('div', { class: 'pg' }, el('span', { class: 'rotulo', text: 'Pago' }), el('b', { class: 'num', text: brl.format(t.pago) })),
+      el('div', {}, el('span', { class: 'rotulo', text: 'Total do mês' }), el('b', { class: 'num', text: brl.format(t.total) }))),
+    atrasadas.length ? el('p', { class: 'nota alerta', text: atrasadas.length === 1 ? '1 conta atrasada: ' + atrasadas[0].nome : atrasadas.length + ' contas atrasadas' }) : null,
+    !atrasadas.length && proxima ? el('p', { class: 'nota', text: 'Próximo vencimento: ' + proxima.nome + ', dia ' + diaDe(proxima) }) : null);
+
+  const filtro = el('div', { class: 'filtro', role: 'group', 'aria-label': 'Mostrar' },
+    ...[['todas', 'Todas'], ['apagar', 'A pagar'], ['pagas', 'Pagas']].map(([k, r]) => el('button', { type: 'button', 'aria-pressed': String(ui.filtro === k), text: r, onclick: () => { ui.filtro = k; desenha(); } })));
+  const passa = (c) => ui.filtro === 'todas' || (ui.filtro === 'pagas' ? c.pago : !c.pago);
+  const ordem = (a, b) => (diaDe(a) || 99) - (diaDe(b) || 99) || a.nome.localeCompare(b.nome, 'pt-BR');
+  const contas = d.contas.filter((c) => !c.cartao).sort(ordem);
+  const faturas = d.contas.filter((c) => c.cartao).sort(ordem);
+  const soma = (l) => brl.format(r2(l.reduce((s, c) => s + c.valor, 0)));
+  const lista1 = el('section', { class: 'card lista', 'aria-label': 'Contas' }, el('div', { class: 'lista-tit' }, el('h2', { text: 'Contas' }), el('span', { class: 'num', text: soma(contas) })));
+  const vis1 = contas.filter(passa);
+  if (!vis1.length) lista1.append(el('p', { class: 'vazio-lista', text: contas.length ? 'Nada aqui com este filtro.' : 'Nenhuma conta neste mês.' }));
+  vis1.forEach((c) => lista1.append(linha(d, c)));
+  const lista2 = el('section', { class: 'card lista', 'aria-label': 'Cartões de crédito' }, el('div', { class: 'lista-tit' }, el('h2', { text: 'Cartões de crédito' }), el('span', { class: 'num', text: soma(faturas) })));
+  const vis2 = faturas.filter(passa);
+  if (!vis2.length) lista2.append(el('p', { class: 'vazio-lista', text: faturas.length ? 'Nada aqui com este filtro.' : 'Nenhuma fatura neste mês.' }));
+  vis2.forEach((c) => lista2.append(linha(d, c)));
+
+  const acoes = el('div', { class: 'acoes' },
+    el('button', { type: 'button', class: 'btn forte', text: '+ Nova conta', onclick: () => formConta(d, null) }),
+    el('button', { type: 'button', class: 'btn', text: '+ Compra no cartão', onclick: () => formCompra(d, null, null) }));
+  const extra = !d.iniciado ? el('section', { class: 'card vazio' }, el('p', { text: 'Este mês só tem parcelas lançadas antes. Quer trazer as contas fixas do mês anterior?' }),
+    el('button', { type: 'button', class: 'btn forte', text: 'Trazer as contas do mês anterior', onclick: () => iniciarMes(true) })) : null;
+  return [el('div', { class: 'mes-grid' },
+    el('div', { class: 'principal' }, extra, filtro, lista1, lista2),
+    el('div', { class: 'lado' }, resumo, acoes))];
+}
+
+function linha(d, c) {
+  const item = el('div', { class: 'item' + (c.pago ? ' pago' : '') });
+  const card = c.cartao ? cartao(c.cartao) : null;
+  const qtd = c.cartao ? d.compras.filter((x) => x.cartao === c.cartao).length : 0;
+  const dia = diaDe(c);
+  const atraso = atrasada(d, c);
+  const partes = [];
+  if (atraso) partes.push('Atrasada' + (dia ? ' · venceu dia ' + dia : ''));
+  else if (dia) partes.push((c.pago ? 'Pago · ' : 'Vence dia ') + (c.pago ? 'dia ' + dia : dia));
+  else partes.push(c.pago ? 'Pago' : 'A pagar');
+  if (qtd) partes.push(qtd + (qtd === 1 ? ' compra' : ' compras'));
+  const alterna = () => { const n = copia(d); const x = n.contas.find((y) => y.id === c.id); x.pago = !x.pago; guardaMes(n); };
+  item.append(el('div', { class: 'linha' },
+    el('button', { type: 'button', class: 'check', 'aria-pressed': String(!!c.pago), 'aria-label': (c.pago ? 'Desfazer baixa de ' : 'Dar baixa em ') + c.nome, onclick: alterna }, icone(ICO_CHECK)),
+    el('button', { type: 'button', class: 'nome', 'aria-expanded': c.cartao ? String(!!ui.aberto[c.id]) : null, onclick: c.cartao ? () => { ui.aberto[c.id] = !ui.aberto[c.id]; desenha(); } : alterna },
+      el('strong', {}, card ? el('span', { class: 'ponto', style: 'background:' + card.cor }) : null, c.nome),
+      el('small', { class: atraso ? 'atraso' : null, text: partes.join(' · ') })),
+    el('span', { class: 'valor num', text: brl.format(c.valor) }),
+    el('button', { type: 'button', class: 'edita', 'aria-label': 'Editar ' + c.nome, onclick: () => formConta(d, c) }, icone(ICO_LAPIS))));
+  if (c.cartao && ui.aberto[c.id]) {
+    const box = el('div', { class: 'compras' });
+    d.compras.filter((x) => x.cartao === c.cartao).forEach((p) => box.append(el('div', { class: 'compra' },
+      el('span', { text: p.desc + (p.parcela ? ' · ' + p.parcela : '') }), el('span', { class: 'num', text: brl.format(p.valor) }),
+      el('button', { type: 'button', text: 'Editar', onclick: () => formCompra(d, p, c.cartao) }))));
+    box.append(el('button', { type: 'button', class: 'link', text: '+ Compra neste cartão', onclick: () => formCompra(d, null, c.cartao) }));
+    item.append(box);
+  }
+  return item;
+}
+
+function mesAntes(a, m) { const k = chave(a, m); return Object.keys(dados.meses).filter((x) => x < k && dados.meses[x].contas.length).sort().pop() || null; }
+function mesVazio() {
+  const ant = mesAntes(ui.ano, ui.mes);
+  const box = el('section', { class: 'card vazio' }, el('p', { text: 'Nada lançado em ' + NOMES_MES[ui.mes - 1] + ' de ' + ui.ano + '.' }));
+  if (ant) { const [a, m] = ant.split('-').map(Number); box.append(el('button', { type: 'button', class: 'btn forte', text: 'Começar com as contas de ' + NOMES_MES[m - 1] + (a !== ui.ano ? ' de ' + a : ''), onclick: () => iniciarMes(true) })); }
+  box.append(el('button', { type: 'button', class: 'btn', text: 'Começar em branco', onclick: () => iniciarMes(false) }));
+  const ult = Object.keys(dados.meses).sort().pop();
+  if (ult && ult !== chave(ui.ano, ui.mes)) { const [a, m] = ult.split('-').map(Number); box.append(el('button', { type: 'button', class: 'link', style: 'text-align:center', text: 'Ver o último mês lançado (' + NOMES_MES[m - 1] + ' de ' + a + ')', onclick: () => { ui.ano = a; ui.mes = m; desenha(); } })); }
+  if (!Object.keys(dados.meses).length) box.append(el('p', { class: 'nota', text: 'Tem um backup? Restaure em Backup para trazer seus dados.' }));
+  return box;
+}
+function iniciarMes(copiar) {
+  const d = copia(mesDoc(ui.ano, ui.mes) || vazioMes(ui.ano, ui.mes));
+  d.iniciado = true;
+  const ant = copiar ? mesAntes(ui.ano, ui.mes) : null;
+  if (ant) dados.meses[ant].contas.forEach((c) => {
+    if (c.cartao) { if (!d.contas.some((x) => x.cartao === c.cartao)) d.contas.push({ id: novoId('c'), nome: nomeCartao(c.cartao), cartao: c.cartao, valor: 0, pago: false }); }
+    else if (!c.avulsa) { const x = { id: novoId('c'), nome: c.nome, valor: c.valor, pago: false }; if (c.dia) x.dia = c.dia; d.contas.push(x); }
+  });
+  guardaMes(acertaFaturas(d));
+  avisa(ant ? 'Contas trazidas. Ajuste os valores que mudaram.' : 'Mês começado.');
+}
+
+/* ---------------- formulários ---------------- */
+function abreFolha(titulo, campos, enviar, extras) {
+  const f = $('folha');
+  const erro = el('p', { class: 'erro', hidden: true });
+  f.replaceChildren(el('h3', { text: titulo }), ...campos, erro,
+    el('div', { class: 'botoes' }, el('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: fecha }), el('button', { type: 'submit', class: 'btn forte', text: 'Salvar' })), ...(extras || []));
+  f.onsubmit = (e) => { e.preventDefault(); const msg = enviar(); if (msg) { erro.textContent = msg; erro.hidden = false; } else fecha(); };
+  $('fundo').hidden = false;
+  const p = f.querySelector('input:not([type=checkbox]),select'); if (p && matchMedia('(pointer:fine)').matches) setTimeout(() => p.focus(), 30);
+}
+function fecha() { $('fundo').hidden = true; $('folha').replaceChildren(); }
+$('fundo').addEventListener('click', (e) => { if (e.target === $('fundo')) fecha(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('fundo').hidden) fecha(); });
+const campo = (rot, id, attrs) => el('label', { for: id }, rot, el('input', Object.assign({ id }, attrs)));
+const marcar = (rot, id, on) => el('label', { class: 'marcar', for: id }, el('input', { type: 'checkbox', id, checked: !!on }), rot);
+function confirma(titulo, texto, rotulo, acao) {
+  abreFolha(titulo, [el('p', { class: 'nota', text: texto })], () => { acao(); });
+  const b = $('folha').querySelector('button[type=submit]'); b.textContent = rotulo; b.classList.remove('forte'); b.classList.add('perigo');
+}
+
+function formConta(d, c) {
+  const ehFatura = c && c.cartao;
+  const temCompras = ehFatura && d.compras.some((x) => x.cartao === c.cartao);
+  const campos = [];
+  if (!ehFatura) campos.push(campo('Nome da conta', 'fNome', { value: c ? c.nome : '', maxlength: 60, placeholder: 'Ex.: Água, Luz, Internet' }));
+  if (!temCompras) campos.push(campo('Valor (R$)', 'fValor', { value: c ? paraCampo(c.valor) : '', inputmode: 'decimal', placeholder: '0,00' }));
+  else campos.push(el('p', { class: 'nota', text: 'O valor da fatura é a soma das compras deste cartão no mês. Para mudar, edite as compras.' }));
+  if (!ehFatura) campos.push(campo('Dia do vencimento (opcional)', 'fDia', { type: 'number', inputmode: 'numeric', min: 1, max: 31, value: c && c.dia ? c.dia : '' }));
+  campos.push(marcar('Já está paga', 'fPago', c && c.pago));
+  if (!c) campos.push(marcar('Conta de todo mês (vem junto quando eu começar o próximo mês)', 'fFixa', true));
+  else if (!ehFatura) campos.push(marcar('Conta de todo mês', 'fFixa', !c.avulsa));
+  const extras = c ? [el('button', { type: 'button', class: 'btn perigo', text: 'Apagar ' + (ehFatura ? 'esta fatura' : 'esta conta') + ' deste mês', onclick: () => {
+    confirma('Apagar ' + c.nome + '?', 'Some só de ' + NOMES_MES[d.mes - 1] + ' de ' + d.ano + (ehFatura ? ', junto com as compras do cartão neste mês.' : '.'), 'Apagar', () => {
+      const n = copia(d); n.contas = n.contas.filter((x) => x.id !== c.id); if (ehFatura) n.compras = n.compras.filter((x) => x.cartao !== c.cartao); guardaMes(n); });
+  } })] : null;
+  abreFolha(c ? (ehFatura ? 'Fatura ' + c.nome : 'Editar conta') : 'Nova conta · ' + NOMES_MES[d.mes - 1], campos, () => {
+    const n = copia(d);
+    let valor = null;
+    if (!temCompras) { valor = dinheiro($('fValor').value); if (!(valor >= 0)) return 'Digite o valor, por exemplo 54,46.'; }
+    let dia = null;
+    if (!ehFatura) { const v = $('fDia').value.trim(); if (v) { dia = parseInt(v, 10); if (!(dia >= 1 && dia <= 31)) return 'O dia do vencimento vai de 1 a 31.'; } }
+    if (c) {
+      const x = n.contas.find((y) => y.id === c.id);
+      if (!ehFatura) { x.nome = $('fNome').value.trim() || x.nome; if (dia) x.dia = dia; else delete x.dia; if ($('fFixa').checked) delete x.avulsa; else x.avulsa = true; }
+      if (valor != null) x.valor = valor;
+      x.pago = $('fPago').checked;
+    } else {
+      const nome = $('fNome').value.trim(); if (!nome) return 'Digite o nome da conta.';
+      const x = { id: novoId('c'), nome, valor, pago: $('fPago').checked }; if (dia) x.dia = dia; if (!$('fFixa').checked) x.avulsa = true;
+      n.contas.push(x);
+    }
+    n.iniciado = true; guardaMes(n);
+  }, extras);
+}
+
+function formCompra(d, p, cartaoId) {
+  if (!dados.cartoes.length) { avisa('Cadastre um cartão primeiro.'); formCartao(null); return; }
+  const sel = el('select', { id: 'fCartao' }, ...dados.cartoes.slice().sort((a, b) => (a.dia || 99) - (b.dia || 99)).map((c) => el('option', { value: c.id, text: c.nome + (c.dia ? ' · dia ' + c.dia : '') })));
+  sel.value = (p && p.cartao) || cartaoId || dados.cartoes[0].id;
+  const campos = [el('label', { for: 'fCartao' }, 'Cartão', sel), campo('O que foi comprado', 'fDesc', { value: p ? p.desc : '', maxlength: 80, placeholder: 'Ex.: Mercado, Tênis' })];
+  if (p) campos.push(campo('Valor neste mês (R$)', 'fValor', { value: paraCampo(p.valor), inputmode: 'decimal' }));
+  else campos.push(el('div', { class: 'dupla' }, campo('Valor da parcela (R$)', 'fValor', { inputmode: 'decimal', placeholder: '0,00' }), campo('Parcelas', 'fParc', { type: 'number', inputmode: 'numeric', min: 1, max: 60, value: 1 })),
+    el('p', { class: 'nota', text: 'Com mais de uma parcela, a compra entra também nos meses seguintes, a partir de ' + NOMES_MES[d.mes - 1] + '.' }));
+  const extras = p ? [el('button', { type: 'button', class: 'btn perigo', text: 'Apagar esta compra deste mês', onclick: () => {
+    const n = copia(d); n.compras = n.compras.filter((x) => x.id !== p.id); acertaFaturas(n);
+    const f = n.contas.find((x) => x.cartao === p.cartao); if (f && !n.compras.some((x) => x.cartao === p.cartao)) f.valor = 0;
+    guardaMes(n); fecha(); } })] : null;
+  abreFolha(p ? 'Editar compra' : 'Compra no cartão', campos, () => {
+    const desc = $('fDesc').value.trim(); if (!desc) return 'Digite o que foi comprado.';
+    const valor = dinheiro($('fValor').value); if (!(valor > 0)) return 'Digite o valor, por exemplo 99,90.';
+    const cart = $('fCartao').value;
+    if (p) { const n = copia(d); Object.assign(n.compras.find((y) => y.id === p.id), { desc, valor, cartao: cart }); n.iniciado = true; guardaMes(acertaFaturas(n)); return; }
+    const parc = Math.max(1, Math.min(60, parseInt($('fParc').value, 10) || 1));
+    for (let i = 0; i < parc; i++) {
+      const [a, m] = somaMes(d.ano, d.mes, i);
+      const n = copia(mesDoc(a, m) || vazioMes(a, m));
+      if (i === 0) n.iniciado = true;
+      const x = { id: novoId('p'), cartao: cart, desc, valor }; if (parc > 1) x.parcela = (i + 1) + '/' + parc;
+      n.compras.push(x); acertaFaturas(n); dados.meses[chave(a, m)] = n;
+    }
+    const f = mesDoc(d.ano, d.mes).contas.find((c) => c.cartao === cart); if (f) ui.aberto[f.id] = true;
+    salvar(); desenha(); avisa(parc > 1 ? 'Compra lançada em ' + parc + ' meses.' : 'Compra lançada.');
+  }, extras);
+}
+
+function formCartao(c) {
+  const sel = el('div', { class: 'cores', role: 'group', 'aria-label': 'Cor' });
+  let cor = c ? c.cor : CORES_CARTAO[dados.cartoes.length % CORES_CARTAO.length];
+  const pinta = () => sel.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.cor === cor)));
+  CORES_CARTAO.forEach((k) => sel.append(el('button', { type: 'button', class: 'cor', 'data-cor': k, 'aria-label': 'Cor ' + k, onclick: () => { cor = k; pinta(); } }, el('i', { style: 'background:' + k }))));
+  pinta();
+  const extras = c ? [el('button', { type: 'button', class: 'btn perigo', text: 'Apagar este cartão', onclick: () => {
+    const usado = Object.values(dados.meses).some((m) => m.contas.some((x) => x.cartao === c.id) || m.compras.some((x) => x.cartao === c.id));
+    confirma('Apagar o cartão ' + c.nome + '?', usado ? 'As faturas e compras já lançadas continuam nos meses, mas o cartão sai da lista.' : 'O cartão sai da lista.', 'Apagar', () => {
+      dados.cartoes = dados.cartoes.filter((x) => x.id !== c.id); if (ui.cartaoSel === c.id) ui.cartaoSel = null; salvar(); desenha(); });
+  } })] : null;
+  abreFolha(c ? 'Editar cartão' : 'Novo cartão', [
+    campo('Nome do cartão', 'fNome', { value: c ? c.nome : '', maxlength: 30, placeholder: 'Ex.: Nubank' }),
+    campo('Dia do vencimento', 'fDia', { type: 'number', inputmode: 'numeric', min: 1, max: 31, value: c && c.dia ? c.dia : '' }),
+    el('div', { class: 'nota', text: 'Cor' }), sel], () => {
+      const nome = $('fNome').value.trim(); const dv = $('fDia').value.trim(); const dia = dv ? parseInt(dv, 10) : null;
+      if (!nome) return 'Digite o nome do cartão.'; if (dv && !(dia >= 1 && dia <= 31)) return 'O dia vai de 1 a 31.';
+      if (c) { Object.assign(dados.cartoes.find((x) => x.id === c.id), { nome, dia, cor }); Object.values(dados.meses).forEach((m) => m.contas.forEach((x) => { if (x.cartao === c.id) x.nome = nome; })); }
+      else dados.cartoes.push({ id: novoId('k'), nome, dia, cor });
+      salvar(); desenha();
+    }, extras);
+}
+
+/* ---------------- ANO ---------------- */
+function telaAno() {
+  const a = ui.ano;
+  const meses = Array.from({ length: 12 }, (_, i) => mesDoc(a, i + 1));
+  const tm = meses.map((d) => (d ? totais(d) : { total: 0, pago: 0, falta: 0 }));
+  const tot = r2(tm.reduce((s, t) => s + t.total, 0)), pago = r2(tm.reduce((s, t) => s + t.pago, 0));
+  const comMov = tm.filter((t) => t.total > 0).length;
+  const antT = r2(Array.from({ length: 12 }, (_, i) => mesDoc(a - 1, i + 1)).reduce((s, d) => s + (d ? totais(d).total : 0), 0));
+  const varPct = antT ? (tot / antT - 1) * 100 : null;
+  const kpis = el('section', { class: 'kpis', 'aria-label': 'Resumo do ano' },
+    el('div', { class: 'card kpi' }, el('span', { class: 'rotulo', text: 'Total do ano' }), el('b', { class: 'num', text: brl.format(tot) }),
+      varPct == null ? el('small', { text: 'Sem ' + (a - 1) + ' para comparar' }) : el('small', { class: varPct > 0 ? 'sobe' : 'desce', text: (varPct > 0 ? '▲ ' : '▼ ') + Math.abs(varPct).toFixed(1).replace('.', ',') + '% sobre ' + (a - 1) })),
+    el('div', { class: 'card kpi' }, el('span', { class: 'rotulo', text: 'Média por mês' }), el('b', { class: 'num', text: brl.format(comMov ? r2(tot / comMov) : 0) }), el('small', { text: comMov + (comMov === 1 ? ' mês lançado' : ' meses lançados') })),
+    el('div', { class: 'card kpi' }, el('span', { class: 'rotulo', text: 'Pago' }), el('b', { class: 'num', text: brl.format(pago) }), el('small', { text: tot ? Math.round(pago / tot * 100) + '% do ano' : '—' })),
+    el('div', { class: 'card kpi' }, el('span', { class: 'rotulo', text: 'Falta pagar' }), el('b', { class: 'num', text: brl.format(r2(tot - pago)) }), el('small', { text: 'no ano' })));
+  if (!tot) return [kpis, el('section', { class: 'card vazio' }, el('p', { text: 'Nada lançado em ' + a + '.' }))];
+  return [kpis, grafico(a, tm), planilhaAno(a, meses)];
+}
+
+function grafico(a, tm) {
+  const W = 640, H = 220, mg = { t: 18, b: 24, l: 4, r: 4 };
+  const max = Math.max(...tm.map((t) => t.total), 1);
+  const bw = (W - mg.l - mg.r) / 12;
+  const y = (v) => H - mg.b - (v / max) * (H - mg.t - mg.b);
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Total de cada mês de ' + a + ', com a parte paga' });
+  tm.forEach((t, i) => {
+    const x = mg.l + i * bw + bw * 0.16, w = bw * 0.68;
+    const g = svg('g', { style: 'cursor:pointer' });
+    g.addEventListener('click', () => { ui.mes = i + 1; ui.aba = 'mes'; desenha(); scrollTo(0, 0); });
+    if (t.total) {
+      g.append(svg('rect', { x, y: y(t.total), width: w, height: y(0) - y(t.total), rx: 3, fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.2, 'stroke-dasharray': '3 2' }));
+      if (t.pago) g.append(svg('rect', { x, y: y(t.pago), width: w, height: y(0) - y(t.pago), rx: 3, style: 'fill:var(--pago);stroke:var(--pago-ink);stroke-opacity:.35' }));
+      const lb = svg('text', { x: x + w / 2, y: y(t.total) - 5, 'text-anchor': 'middle' }); lb.textContent = t.total >= 1000 ? (t.total / 1000).toFixed(1).replace('.', ',') + 'k' : Math.round(t.total); g.append(lb);
+    }
+    const ml = svg('text', { x: x + w / 2, y: H - 7, 'text-anchor': 'middle' }); ml.textContent = MES3[i]; g.append(ml);
+    const tt = svg('title'); tt.textContent = NOMES_MES[i] + ': ' + brl.format(t.total) + ' (pago ' + brl.format(t.pago) + ')'; g.append(tt);
+    s.append(g);
+  });
+  s.append(svg('line', { x1: mg.l, x2: W - mg.r, y1: H - mg.b, y2: H - mg.b, stroke: 'var(--line)' }));
+  return el('section', { class: 'card grafico', 'aria-label': 'Gráfico do ano' },
+    el('div', { class: 'secao', style: 'padding:0 0 8px' }, el('h2', { text: 'Mês a mês' }), el('span', { class: 'nota', text: 'Toque num mês para abrir' })), s,
+    el('div', { class: 'legenda' }, el('span', {}, el('i', { style: 'background:var(--pago)' }), 'Pago'), el('span', {}, el('i', { style: 'border:1px dashed var(--muted)' }), 'Total do mês')));
+}
+
+function planilhaAno(a, meses) {
+  const linhas = new Map();
+  meses.forEach((d, i) => d && d.contas.forEach((c) => {
+    const k = (c.cartao ? 'k:' + c.cartao : 'c:' + c.nome.toLowerCase());
+    if (!linhas.has(k)) linhas.set(k, { nome: c.cartao ? nomeCartao(c.cartao) : c.nome, cartao: c.cartao, cel: Array(12).fill(null) });
+    const cel = linhas.get(k).cel;
+    cel[i] = cel[i] ? { valor: r2(cel[i].valor + c.valor), pago: cel[i].pago && c.pago } : { valor: c.valor, pago: c.pago };
+  }));
+  const todas = [...linhas.values()];
+  const contas = todas.filter((l) => !l.cartao).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
+  const cards = todas.filter((l) => l.cartao).sort((x, y) => ((cartao(x.cartao) || {}).dia || 99) - ((cartao(y.cartao) || {}).dia || 99));
+  const tbody = el('tbody');
+  const kh = chave(hoje.getFullYear(), hoje.getMonth() + 1);
+  const linhaTab = (l) => el('tr', {}, el('td', { class: 'fixa', title: l.nome, text: l.nome }),
+    ...l.cel.map((c, i) => {
+      if (!c || !c.valor) return el('td', { text: '' });
+      const atr = !c.pago && chave(a, i + 1) < kh;
+      return el('td', { class: 'num clica ' + (c.pago ? 'p' : atr ? 'a' : ''), title: NOMES_MES[i] + (c.pago ? ' · pago' : ' · a pagar'), text: brl0.format(c.valor), onclick: () => { ui.mes = i + 1; ui.aba = 'mes'; desenha(); scrollTo(0, 0); } });
+    }),
+    el('td', { class: 'num', style: 'font-weight:700', text: brl0.format(r2(l.cel.reduce((s, c) => s + (c ? c.valor : 0), 0))) }));
+  if (contas.length) { tbody.append(el('tr', { class: 'sep' }, el('td', { class: 'fixa', text: 'Contas' }), el('td', { colspan: 13 }))); contas.forEach((l) => tbody.append(linhaTab(l))); }
+  if (cards.length) { tbody.append(el('tr', { class: 'sep' }, el('td', { class: 'fixa', text: 'Cartões' }), el('td', { colspan: 13 }))); cards.forEach((l) => tbody.append(linhaTab(l))); }
+  const totMes = meses.map((d) => (d ? totais(d).total : 0));
+  const tabela = el('table', { class: 'tabela' },
+    el('thead', {}, el('tr', {}, el('th', { class: 'fixa', text: 'Conta' }), ...MES3.map((m) => el('th', { text: m })), el('th', { text: 'Total' }))),
+    tbody,
+    el('tfoot', {}, el('tr', {}, el('td', { class: 'fixa', text: 'Total' }), ...totMes.map((v) => el('td', { class: 'num', text: v ? brl0.format(v) : '' })), el('td', { class: 'num', text: brl0.format(r2(totMes.reduce((s, v) => s + v, 0))) }))));
+  return el('section', { class: 'card', 'aria-label': 'Planilha do ano' },
+    el('div', { class: 'secao' }, el('h2', { text: 'Planilha do ano' }), el('span', { class: 'nota', text: 'Colorido = pago · vermelho = atrasado' })),
+    el('div', { class: 'tabela-wrap' }, tabela));
+}
+
+/* ---------------- CARTÕES ---------------- */
+function telaCartoes() {
+  const a = ui.ano;
+  const totCartao = (id) => r2(Array.from({ length: 12 }, (_, i) => mesDoc(a, i + 1)).reduce((s, d) => s + (d ? d.contas.filter((c) => c.cartao === id).reduce((x, c) => x + c.valor, 0) : 0), 0));
+  const lista = dados.cartoes.slice().sort((x, y) => (x.dia || 99) - (y.dia || 99));
+  if (!ui.cartaoSel || !cartao(ui.cartaoSel)) { const usado = lista.find((c) => totCartao(c.id) > 0); ui.cartaoSel = usado ? usado.id : (lista[0] || {}).id || null; }
+  const grade = el('section', { class: 'cartoes', 'aria-label': 'Seus cartões' },
+    ...lista.map((c) => el('button', { type: 'button', class: 'card cc', 'aria-pressed': String(ui.cartaoSel === c.id), onclick: () => { ui.cartaoSel = c.id; desenha(); } },
+      el('div', { class: 'faixa', style: 'background:' + c.cor }), el('strong', { text: c.nome }),
+      el('small', { text: c.dia ? 'Vence dia ' + c.dia : 'Sem dia definido' }), el('b', { class: 'num', text: brl.format(totCartao(c.id)) }), el('small', { text: 'em ' + a }))),
+    el('button', { type: 'button', class: 'card cc', style: 'align-items:center;justify-content:center;color:var(--accent);font-weight:700', text: '+ Novo cartão', onclick: () => formCartao(null) }));
+  const out = [grade];
+  const c = cartao(ui.cartaoSel);
+  if (c) {
+    const linhas = new Map();
+    for (let i = 0; i < 12; i++) { const d = mesDoc(a, i + 1); if (!d) continue; d.compras.filter((p) => p.cartao === c.id).forEach((p) => {
+      const k = p.desc.replace(/\s*\(?\d+\s*\/\s*\d+\)?$/, '').trim().toLowerCase();
+      if (!linhas.has(k)) linhas.set(k, { desc: p.desc.replace(/\s*\(?\d+\s*\/\s*\d+\)?$/, '').trim(), cel: Array(12).fill(0) });
+      linhas.get(k).cel[i] = r2(linhas.get(k).cel[i] + p.valor); }); }
+    const tb = el('tbody', {}, ...[...linhas.values()].map((l) => el('tr', {}, el('td', { class: 'fixa', title: l.desc, text: l.desc }),
+      ...l.cel.map((v, i) => el('td', { class: 'num' + (v ? ' clica' : ''), text: v ? brl0.format(v) : '', onclick: v ? () => { ui.mes = i + 1; ui.aba = 'mes'; const d = mesDoc(a, i + 1); const f = d && d.contas.find((x) => x.cartao === c.id); if (f) ui.aberto[f.id] = true; desenha(); scrollTo(0, 0); } : null })),
+      el('td', { class: 'num', style: 'font-weight:700', text: brl0.format(r2(l.cel.reduce((s, v) => s + v, 0))) }))));
+    const fat = Array.from({ length: 12 }, (_, i) => { const d = mesDoc(a, i + 1); return d ? r2(d.contas.filter((x) => x.cartao === c.id).reduce((s, x) => s + x.valor, 0)) : 0; });
+    out.push(el('section', { class: 'card', 'aria-label': 'Compras do cartão ' + c.nome },
+      el('div', { class: 'secao' }, el('h2', {}, el('span', { class: 'ponto', style: 'display:inline-block;margin-right:8px;background:' + c.cor }), 'Compras no ' + c.nome + ' em ' + a),
+        el('button', { type: 'button', class: 'link', text: 'Editar cartão', onclick: () => formCartao(c) })),
+      linhas.size ? el('div', { class: 'tabela-wrap' }, el('table', { class: 'tabela' },
+        el('thead', {}, el('tr', {}, el('th', { class: 'fixa', text: 'Compra' }), ...MES3.map((m) => el('th', { text: m })), el('th', { text: 'Total' }))), tb,
+        el('tfoot', {}, el('tr', {}, el('td', { class: 'fixa', text: 'Fatura' }), ...fat.map((v) => el('td', { class: 'num', text: v ? brl0.format(v) : '' })), el('td', { class: 'num', text: brl0.format(r2(fat.reduce((s, v) => s + v, 0))) })))))
+        : el('p', { class: 'vazio-lista', text: 'Nenhuma compra lançada neste cartão em ' + a + '.' })));
+  } else out.push(el('section', { class: 'card vazio' }, el('p', { text: 'Cadastre seus cartões para lançar compras parceladas.' })));
+  return out;
+}
+
+/* ---------------- BACKUP ---------------- */
+function resumoDados(d) {
+  const ks = Object.keys(d.meses).sort();
+  const nContas = ks.reduce((s, k) => s + d.meses[k].contas.length, 0), nCompras = ks.reduce((s, k) => s + d.meses[k].compras.length, 0);
+  const per = ks.length ? NOMES_MES[+ks[0].slice(5) - 1] + ' de ' + ks[0].slice(0, 4) + ' a ' + NOMES_MES[+ks[ks.length - 1].slice(5) - 1] + ' de ' + ks[ks.length - 1].slice(0, 4) : '—';
+  return el('dl', { class: 'fatos' }, el('dt', { text: 'Período' }), el('dd', { text: per }), el('dt', { text: 'Meses' }), el('dd', { class: 'num', text: String(ks.length) }),
+    el('dt', { text: 'Contas lançadas' }), el('dd', { class: 'num', text: String(nContas) }), el('dt', { text: 'Compras em cartão' }), el('dd', { class: 'num', text: String(nCompras) }),
+    el('dt', { text: 'Cartões' }), el('dd', { class: 'num', text: String(d.cartoes.length) }));
+}
+function telaBackup() {
+  const ult = dados.config.ultimoBackup ? new Date(dados.config.ultimoBackup) : null;
+  const dias = ult ? Math.floor((Date.now() - ult) / 86400000) : null;
+  const out = [];
+  out.push(el('section', { class: 'card bloco' }, el('h2', { text: 'Seus dados' }),
+    el('p', { class: 'nota', text: 'Ficam guardados só neste aparelho. Para levar para o celular, o computador ou outro aparelho, salve um backup aqui e restaure lá.' }),
+    resumoDados(dados),
+    el('p', { class: 'nota' + (dias == null || dias > 7 ? ' alerta' : ''), text: ult ? 'Último backup: ' + ult.toLocaleDateString('pt-BR') + (dias ? ' (há ' + dias + (dias === 1 ? ' dia)' : ' dias)') : ' (hoje)') : 'Você ainda não salvou nenhum backup neste aparelho.' })));
+  out.push(el('section', { class: 'card bloco' }, el('h2', { text: 'Salvar' }),
+    el('div', { class: 'acoes' },
+      el('button', { type: 'button', class: 'btn forte', text: 'Salvar backup (.json)', onclick: salvarBackup }),
+      el('button', { type: 'button', class: 'btn', text: 'Salvar planilha (.csv)', onclick: salvarCSV })),
+    ui.saida ? el('div', {}, el('p', { class: 'nota', text: 'Não deu para baixar o arquivo aqui. Copie o texto abaixo e salve num arquivo.' }), el('textarea', { class: 'saida', readonly: true }, ui.saida),
+      el('button', { type: 'button', class: 'link', text: 'Copiar', onclick: async (e) => { try { await navigator.clipboard.writeText(ui.saida); avisa('Copiado'); } catch (x) { const t = e.target.previousSibling; t.select(); } } })) : null));
+  const imp = el('section', { class: 'card bloco' }, el('h2', { text: 'Restaurar' }),
+    el('p', { class: 'nota', text: 'Escolha um arquivo de backup do Evoruk (.json).' }),
+    el('div', { class: 'acoes' }, el('button', { type: 'button', class: 'btn', text: 'Restaurar backup', onclick: () => { $('arquivo').value = ''; $('arquivo').click(); } })));
+  if (ui.importar) {
+    imp.append(el('p', { class: 'nota', style: 'color:var(--ink);font-weight:700', text: 'Backup encontrado:' }), resumoDados(ui.importar),
+      el('p', { class: 'nota', text: '"Substituir" deixa tudo igual ao backup. "Juntar" acrescenta o que falta: meses, contas e compras que já existem aqui ficam como estão.' }),
+      el('div', { class: 'acoes' },
+        el('button', { type: 'button', class: 'btn forte', text: 'Substituir dados atuais', onclick: () => aplicaImport('substituir') }),
+        el('button', { type: 'button', class: 'btn', text: 'Juntar', onclick: () => aplicaImport('juntar') }),
+        el('button', { type: 'button', class: 'btn', text: 'Cancelar', onclick: () => { ui.importar = null; desenha(); } })));
+  }
+  out.push(imp);
+  out.push(el('section', { class: 'card bloco' }, el('h2', { text: 'Cor da conta paga' }),
+    el('div', { class: 'cores', role: 'group', 'aria-label': 'Cor da conta paga' }, ...Object.entries(CORES_PAGO).map(([k, [r, cor]]) =>
+      el('button', { type: 'button', class: 'cor', 'aria-pressed': String((dados.config.corPago || 'amarelo') === k), onclick: () => { dados.config.corPago = k; salvar(); desenha(); } }, el('i', { style: 'background:' + cor }), r)))));
+  out.push(el('section', { class: 'card bloco' }, el('h2', { text: 'Apagar tudo' }),
+    el('p', { class: 'nota', text: 'Remove todas as contas, compras e cartões deste aparelho. Salve um backup antes.' }),
+    el('div', { class: 'acoes' }, el('button', { type: 'button', class: 'btn perigo', text: 'Apagar todos os dados', onclick: () => confirma('Apagar todos os dados?', 'Isso não tem volta, a não ser que você tenha um backup.', 'Apagar tudo', () => { const cor = dados.config.corPago; dados = dadosVazios(); dados.config.corPago = cor; salvar(); desenha(); avisa('Dados apagados.'); }) }))));
+  return out;
+}
+const hojeISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+async function ofereceArquivo(nome, texto, tipo) {
+  const blob = new Blob([texto], { type: tipo });
+  try {
+    const f = new File([blob], nome, { type: tipo });
+    if (navigator.canShare && navigator.canShare({ files: [f] }) && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) { await navigator.share({ files: [f], title: nome }); return true; }
+  } catch (e) { if (e && e.name === 'AbortError') return false; }
+  try {
+    const url = URL.createObjectURL(blob); const a = el('a', { href: url, download: nome }); document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000); return true;
+  } catch (e) { ui.saida = texto; desenha(); return false; }
+}
+async function salvarBackup() {
+  const ok = await ofereceArquivo('evoruk-backup-' + hojeISO() + '.json', JSON.stringify(Object.assign(copia(dados), { app: APP, versao: VERSAO, exportado: new Date().toISOString() })), 'application/json');
+  if (ok) { dados.config.ultimoBackup = new Date().toISOString(); ui.saida = ''; salvar(); desenha(); avisa('Backup salvo.'); }
+}
+function salvarCSV() {
+  const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+  const rows = ['Ano;Mês;Tipo;Nome;Valor;Situação;Vencimento'];
+  Object.keys(dados.meses).sort().forEach((k) => { const d = dados.meses[k]; d.contas.forEach((c) => rows.push([d.ano, NOMES_MES[d.mes - 1], c.cartao ? 'Cartão' : 'Conta', q(c.nome), c.valor.toFixed(2).replace('.', ','), c.pago ? 'Pago' : 'A pagar', diaDe(c) || ''].join(';')));
+    d.compras.forEach((p) => rows.push([d.ano, NOMES_MES[d.mes - 1], 'Compra no cartão', q(nomeCartao(p.cartao) + ': ' + p.desc + (p.parcela ? ' (' + p.parcela + ')' : '')), p.valor.toFixed(2).replace('.', ','), '', ''].join(';'))); });
+  ofereceArquivo('evoruk-planilha-' + hojeISO() + '.csv', '﻿' + rows.join('\r\n'), 'text/csv');
+}
+$('arquivo').addEventListener('change', async () => {
+  const f = $('arquivo').files[0]; if (!f) return;
+  try {
+    const texto = f.text ? await f.text() : await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => erro(r.error); r.readAsText(f); });
+    const j = JSON.parse(texto);
+    if (!j || typeof j !== 'object' || !j.meses) throw new Error('formato');
+    ui.importar = normaliza(j); ui.aba = 'backup'; desenha();
+  } catch (e) { ui.importar = null; avisa('Não reconheci este arquivo. Escolha um backup .json do Evoruk.'); }
+});
+function aplicaImport(como) {
+  const b = ui.importar; if (!b) return;
+  if (como === 'substituir') { const cor = dados.config.corPago; dados = b; dados.config.corPago = b.config.corPago || cor; }
+  else {
+    b.cartoes.forEach((c) => { if (!dados.cartoes.some((x) => x.id === c.id || x.nome.toLowerCase() === c.nome.toLowerCase())) dados.cartoes.push(c); });
+    const mapa = {}; b.cartoes.forEach((c) => { const x = dados.cartoes.find((y) => y.id === c.id || y.nome.toLowerCase() === c.nome.toLowerCase()); mapa[c.id] = x ? x.id : c.id; });
+    for (const [k, m] of Object.entries(b.meses)) {
+      m.contas.forEach((c) => { if (c.cartao) c.cartao = mapa[c.cartao] || c.cartao; }); m.compras.forEach((p) => { p.cartao = mapa[p.cartao] || p.cartao; });
+      const atual = dados.meses[k];
+      if (!atual) { dados.meses[k] = m; continue; }
+      m.contas.forEach((c) => { if (!atual.contas.some((x) => x.id === c.id || (c.cartao ? x.cartao === c.cartao : (!x.cartao && x.nome.toLowerCase() === c.nome.toLowerCase())))) atual.contas.push(c); });
+      m.compras.forEach((p) => { if (!atual.compras.some((x) => x.id === p.id || (x.cartao === p.cartao && x.desc === p.desc && x.valor === p.valor))) atual.compras.push(p); });
+      atual.iniciado = atual.iniciado || m.iniciado; acertaFaturas(atual);
+    }
+  }
+  ui.importar = null; salvar();
+  const ks = Object.keys(dados.meses).sort(); const kh = chave(hoje.getFullYear(), hoje.getMonth() + 1);
+  if (ks.length && !dados.meses[kh]) { const ult = ks[ks.length - 1]; if (ult < kh) { ui.ano = +ult.slice(0, 4); ui.mes = +ult.slice(5); } }
+  ui.aba = 'mes'; desenha(); avisa(como === 'substituir' ? 'Backup restaurado.' : 'Dados juntados.');
+}
+
+/* ---------------- navegação ---------------- */
+document.querySelectorAll('.abas button').forEach((b) => b.addEventListener('click', () => { ui.aba = b.dataset.aba; desenha(); scrollTo(0, 0); }));
+$('ant').addEventListener('click', () => { if (ui.aba === 'mes') [ui.ano, ui.mes] = somaMes(ui.ano, ui.mes, -1); else ui.ano--; desenha(); });
+$('prox').addEventListener('click', () => { if (ui.aba === 'mes') [ui.ano, ui.mes] = somaMes(ui.ano, ui.mes, 1); else ui.ano++; desenha(); });
+document.addEventListener('keydown', (e) => {
+  if (!$('fundo').hidden || /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || '')) return;
+  if (e.key === 'ArrowLeft') $('ant').click(); else if (e.key === 'ArrowRight') $('prox').click();
+});
+
+(async () => {
+  dados = normaliza(await carregar());
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  desenha();
+})();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+window.__evoruk = { get dados() { return dados; }, ui };
+})();
+</script>
+</body>
+</html>

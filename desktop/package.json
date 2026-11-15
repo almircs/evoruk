@@ -1,0 +1,28 @@
+{
+  "name": "evoruk",
+  "productName": "Evoruk",
+  "version": "1.0.0",
+  "description": "Controle mensal das contas da casa",
+  "author": "Carlos Almir",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "io.github.almircs.evoruk",
+    "productName": "Evoruk",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "app/**/*"],
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "artifactName": "Evoruk-Setup-${version}.${ext}" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "Evoruk" },
+    "mac": { "target": [{ "target": "dmg", "arch": ["universal"] }], "category": "public.app-category.finance", "artifactName": "Evoruk-${version}-mac.${ext}", "identity": null }
+  }
+}
