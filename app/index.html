@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Evoruk</title>
 <meta name="description" content="Controle mensal das contas da casa: lançar, dar baixa e ver o ano inteiro.">
-<meta name="theme-color" content="#0E5E63">
+<meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#181D22" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Evoruk">
@@ -16,47 +17,51 @@
 <style>
 /* Evoruk — layout: barra do mês no topo, conteúdo em cartões, abas embaixo no celular e na lateral no computador */
 :root {
-  --bg: #EEF2F5;
+  /* claro: fundo neutro frio, um azul-ardósia como cor de ação, tons suaves para Contas, Cartões, pago e totais */
+  --bg: #F3F5F7;
   --panel: #FFFFFF;
-  --ink: #13202A;
-  --muted: #5B6975;
-  --line: #DAE1E7;
-  --accent: #0B5F66;
+  --ink: #1F2A33;
+  --muted: #6A7682;
+  --line: #E2E7EC;
+  --accent: #2F5F8F;
   --accent-ink: #FFFFFF;
-  --accent-soft: #D7EEEC;
-  --topo: #0B5F66;
-  --topo-ink: #FFFFFF;
-  --topo-btn: rgba(255,255,255,.14);
-  --topo-sel: rgba(255,255,255,.22);
-  --danger: #C0392B;
-  --sec-contas: #0B5F66;
-  --sec-cartoes: #5B3FA8;
-  --sec-ink: #FFFFFF;
-  --cab: #DCE5EB;
-  --grade: #C3CED7;
-  --zebra: #F4F7F9;
-  --total-bg: #DCE9F7;
-  --total-ink: #0F3A66;
-  --pago: #FFE14D;
-  --pago-ink: #3A2F00;
+  --accent-soft: #E6EEF7;
+  --topo: #FFFFFF;
+  --topo-ink: #1F2A33;
+  --topo-btn: #F0F3F6;
+  --topo-sel: #E6EEF7;
+  --contas-bg: #E4F2EE; --contas-ink: #1D6355; --contas-bar: #3A9C86;
+  --cartoes-bg: #ECEAF7; --cartoes-ink: #4A3F8F; --cartoes-bar: #7A6BD1;
+  --cab: #F2F5F8;
+  --grade: #E4E9EE;
+  --zebra: #FAFBFC;
+  --total-bg: #EAF1F9;
+  --total-ink: #24507E;
+  --danger: #BF4A3E;
+  --pago: #FBEFB7;
+  --pago-ink: #5A4A06;
+  --pago-mark: #D9B21E;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --r: 14px;
   color-scheme: light;
 }
-:root[data-pago="verde"] { --pago: #A6EBB4; --pago-ink: #0F3B1B; }
-:root[data-pago="azul"] { --pago: #A9D2FF; --pago-ink: #0B2A4A; }
-:root[data-pago="rosa"] { --pago: #FFC0DA; --pago-ink: #4A0F27; }
+:root[data-pago="verde"] { --pago: #D8F1DE; --pago-ink: #1E5530; --pago-mark: #3FA35B; }
+:root[data-pago="azul"] { --pago: #DCEBFB; --pago-ink: #1D4570; --pago-mark: #3E83C9; }
+:root[data-pago="rosa"] { --pago: #F9E0EA; --pago-ink: #6E2443; --pago-mark: #CF5B8B; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0A1115; --panel: #121C22; --ink: #E8EEF2; --muted: #93A3AF; --line: #223139;
-    --accent: #3CC4B4; --accent-ink: #04201E; --accent-soft: #12332F;
-    --topo: #0F1D23; --topo-ink: #E8EEF2; --topo-btn: rgba(255,255,255,.07); --topo-sel: #1C3A38;
-    --sec-contas: #146B66; --sec-cartoes: #4E3A96; --sec-ink: #FFFFFF; --cab: #1A2A33; --grade: #2E3E49; --zebra: #16222A; --total-bg: #142A40; --total-ink: #A8D0FF;
-    --danger: #FF8A7A; --pago: #E9C93A; --pago-ink: #1C1700; color-scheme: dark;
+    --bg: #111519; --panel: #181D22; --ink: #E3E8EC; --muted: #8E99A3; --line: #262D34;
+    --accent: #7AAEDD; --accent-ink: #0E1B28; --accent-soft: #1D2B39;
+    --topo: #181D22; --topo-ink: #E3E8EC; --topo-btn: #20272E; --topo-sel: #1D2B39;
+    --contas-bg: #17302B; --contas-ink: #8FD3C1; --contas-bar: #3A9C86;
+    --cartoes-bg: #23213A; --cartoes-ink: #B8AEF0; --cartoes-bar: #7A6BD1;
+    --cab: #1D2329; --grade: #283038; --zebra: #1B2026;
+    --total-bg: #1A2633; --total-ink: #A7C8EA;
+    --danger: #F08A7C; --pago: #3B3418; --pago-ink: #F3DC85; --pago-mark: #D9B21E; color-scheme: dark;
   }
-  :root:not([data-theme="light"])[data-pago="verde"] { --pago: #5FD07A; --pago-ink: #052410; }
-  :root:not([data-theme="light"])[data-pago="azul"] { --pago: #6CB1FF; --pago-ink: #061C33; }
-  :root:not([data-theme="light"])[data-pago="rosa"] { --pago: #FF8FBE; --pago-ink: #33061A; }
+  :root:not([data-theme="light"])[data-pago="verde"] { --pago: #1C3324; --pago-ink: #9FDDB1; --pago-mark: #3FA35B; }
+  :root:not([data-theme="light"])[data-pago="azul"] { --pago: #1A2B3E; --pago-ink: #A9CDF2; --pago-mark: #3E83C9; }
+  :root:not([data-theme="light"])[data-pago="rosa"] { --pago: #3A1E2B; --pago-ink: #F2B3CC; --pago-mark: #CF5B8B; }
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -96,7 +101,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
   .abas button { flex-direction: row; gap: 8px; padding: 9px 14px; font-size: .95rem; color: var(--topo-ink); opacity: .78; }
   .abas button svg { width: 20px; height: 20px; }
   .abas button:hover { opacity: 1; background: var(--topo-btn); }
-  .abas button[aria-current="page"] { opacity: 1; color: var(--topo-ink); background: var(--topo-sel); }
+  .abas button[aria-current="page"] { opacity: 1; color: var(--accent); background: var(--topo-sel); }
   .periodo { gap: 8px; }
   .corpo { padding: 24px 24px 40px; }
 }
@@ -113,7 +118,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .mini b { font-size: 1.05rem; }
 .mini .pg b { background: var(--pago); color: var(--pago-ink); border-radius: 5px; padding: 0 5px; align-self: flex-start; }
 .barra { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
-.barra i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.barra i { display: block; height: 100%; background: var(--pago-mark); border-radius: 4px; }
 .nota { margin: 0; font-size: .85rem; color: var(--muted); }
 .nota.alerta { color: var(--danger); font-weight: 600; }
 .filtro { display: flex; gap: 4px; background: var(--line); padding: 3px; border-radius: 10px; align-self: flex-start; }
@@ -129,7 +134,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .item.pago .linha { background: var(--pago); color: var(--pago-ink); }
 .check { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--muted); background: transparent; display: grid; place-items: center; padding: 0; color: transparent; }
 .check svg { width: 16px; height: 16px; }
-.item.pago .check { background: var(--pago-ink); border-color: var(--pago-ink); color: var(--pago); }
+.item.pago .check { background: var(--pago-mark); border-color: var(--pago-mark); color: #FFFFFF; }
 .nome { border: 0; background: none; text-align: left; padding: 8px 0; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .nome strong { font-weight: 600; overflow-wrap: anywhere; display: flex; align-items: center; gap: 6px; }
 .nome small { color: var(--muted); font-size: .8rem; }
@@ -195,20 +200,24 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 
 
 /* destaques: faixas de Contas e Cartões, cabeçalho dos meses e totais */
-.lista-tit.t-contas, .lista-tit.t-cartoes { padding: 11px 14px; color: var(--sec-ink); }
-.lista-tit.t-contas { background: var(--sec-contas); }
-.lista-tit.t-cartoes { background: var(--sec-cartoes); }
-.lista-tit.t-contas h2, .lista-tit.t-cartoes h2 { color: var(--sec-ink); font-size: .85rem; }
-.lista-tit.t-contas span, .lista-tit.t-cartoes span { color: var(--sec-ink); font-weight: 800; font-size: .95rem; }
+.lista-tit.t-contas, .lista-tit.t-cartoes { padding: 11px 14px; border-left: 5px solid; }
+.lista-tit.t-contas { background: var(--contas-bg); border-left-color: var(--contas-bar); }
+.lista-tit.t-contas h2, .lista-tit.t-contas span { color: var(--contas-ink); }
+.lista-tit.t-cartoes { background: var(--cartoes-bg); border-left-color: var(--cartoes-bar); }
+.lista-tit.t-cartoes h2, .lista-tit.t-cartoes span { color: var(--cartoes-ink); }
+.lista-tit.t-contas h2, .lista-tit.t-cartoes h2 { font-size: .85rem; }
+.lista-tit.t-contas span, .lista-tit.t-cartoes span { font-weight: 800; font-size: .95rem; }
 .lista-tit + .item { border-top: 0; }
-.tabela thead th { background: var(--cab); color: var(--ink); }
+.tabela thead th { background: var(--cab); color: var(--muted); }
 .tabela thead th.fixa { background: var(--cab); }
-.tabela tr.sep.t-contas td, .tabela tr.sep.t-contas td.fixa { background: var(--sec-contas); color: var(--sec-ink); }
-.tabela tr.sep.t-cartoes td, .tabela tr.sep.t-cartoes td.fixa { background: var(--sec-cartoes); color: var(--sec-ink); }
-.tabela td.tot, .tabela th.tot { background: var(--total-bg); color: var(--total-ink); font-weight: 800; border-left: 2px solid var(--total-ink); }
-.tabela tfoot td, .tabela tfoot td.fixa { background: var(--total-bg); color: var(--total-ink); font-weight: 800; border-top: 2px solid var(--total-ink); }
+.tabela tr.sep.t-contas td, .tabela tr.sep.t-contas td.fixa { background: var(--contas-bg); color: var(--contas-ink); }
+.tabela tr.sep.t-contas td.fixa { box-shadow: inset 5px 0 0 var(--contas-bar); }
+.tabela tr.sep.t-cartoes td, .tabela tr.sep.t-cartoes td.fixa { background: var(--cartoes-bg); color: var(--cartoes-ink); }
+.tabela tr.sep.t-cartoes td.fixa { box-shadow: inset 5px 0 0 var(--cartoes-bar); }
+.tabela td.tot, .tabela th.tot { background: var(--total-bg); color: var(--total-ink); font-weight: 800; }
+.tabela tfoot td, .tabela tfoot td.fixa { background: var(--total-bg); color: var(--total-ink); font-weight: 800; border-top: 2px solid var(--grade); }
 .mini .tt b { background: var(--total-bg); color: var(--total-ink); border-radius: 5px; padding: 0 5px; align-self: flex-start; }
-.kpi.total { background: var(--total-bg); border-color: var(--total-ink); }
+.kpi.total { background: var(--total-bg); border-color: var(--total-bg); }
 .kpi.total b, .kpi.total .rotulo { color: var(--total-ink); }
 
 /* grade da planilha: linhas e colunas separadas, listras alternadas, divisão no meio do ano */
@@ -217,9 +226,9 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .tabela thead th { border-bottom: 2px solid var(--grade); }
 .tabela tbody tr:not(.sep):nth-child(even) td:not(.p):not(.tot) { background: var(--zebra); }
 .tabela tbody tr:not(.sep):nth-child(even) td.fixa { background: var(--zebra); }
-.tabela tr > :nth-child(7) { border-right: 2px solid var(--muted); }
+.tabela tr > :nth-child(7) { border-right: 2px solid var(--line); box-shadow: inset -1px 0 0 var(--grade); }
 .tabela tr.sep td { border-right: 0; }
-.tabela tbody tr:not(.sep):hover td { box-shadow: inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
+.tabela tbody tr:not(.sep):hover td { box-shadow: inset 0 1px 0 var(--accent-soft), inset 0 -1px 0 var(--accent-soft); }
 
 /* cartões */
 .cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
@@ -268,7 +277,7 @@ textarea.saida { width: 100%; min-height: 120px; border: 1px solid var(--line); 
   <header class="topo">
     <div class="topo-in">
       <div class="marca" aria-label="Evoruk">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="8" fill="#FFE45C"/><path d="M9 16.5l4.5 4.5L23 11.5" fill="none" stroke="#0E5E63" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="8" fill="#E9C43A"/><path d="M9 16.5l4.5 4.5L23 11.5" fill="none" stroke="#1F2A33" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Evoruk</span>
       </div>
       <nav class="abas" aria-label="Seções">
@@ -728,7 +737,7 @@ function grafico(a, tm) {
     g.addEventListener('click', () => { ui.mes = i + 1; ui.aba = 'mes'; desenha(); scrollTo(0, 0); });
     if (t.total) {
       g.append(svg('rect', { x, y: y(t.total), width: w, height: y(0) - y(t.total), rx: 3, fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.2, 'stroke-dasharray': '3 2' }));
-      if (t.pago) g.append(svg('rect', { x, y: y(t.pago), width: w, height: y(0) - y(t.pago), rx: 3, style: 'fill:var(--pago);stroke:var(--pago-ink);stroke-opacity:.35' }));
+      if (t.pago) g.append(svg('rect', { x, y: y(t.pago), width: w, height: y(0) - y(t.pago), rx: 3, style: 'fill:var(--pago-mark);fill-opacity:.75' }));
       const lb = svg('text', { x: x + w / 2, y: y(t.total) - 5, 'text-anchor': 'middle' }); lb.textContent = t.total >= 1000 ? (t.total / 1000).toFixed(1).replace('.', ',') + 'k' : Math.round(t.total); g.append(lb);
     }
     const ml = svg('text', { x: x + w / 2, y: H - 7, 'text-anchor': 'middle' }); ml.textContent = MES3[i]; g.append(ml);
@@ -738,7 +747,7 @@ function grafico(a, tm) {
   s.append(svg('line', { x1: mg.l, x2: W - mg.r, y1: H - mg.b, y2: H - mg.b, stroke: 'var(--line)' }));
   return el('section', { class: 'card grafico', 'aria-label': 'Gráfico do ano' },
     el('div', { class: 'secao', style: 'padding:0 0 8px' }, el('h2', { text: 'Mês a mês' }), el('span', { class: 'nota', text: 'Toque num mês para abrir' })), s,
-    el('div', { class: 'legenda' }, el('span', {}, el('i', { style: 'background:var(--pago)' }), 'Pago'), el('span', {}, el('i', { style: 'border:1px dashed var(--muted)' }), 'Total do mês')));
+    el('div', { class: 'legenda' }, el('span', {}, el('i', { style: 'background:var(--pago-mark);opacity:.75' }), 'Pago'), el('span', {}, el('i', { style: 'border:1px dashed var(--muted)' }), 'Total do mês')));
 }
 
 function planilhaAno(a, meses) {
