@@ -33,6 +33,8 @@
   --sec-cartoes: #5B3FA8;
   --sec-ink: #FFFFFF;
   --cab: #DCE5EB;
+  --grade: #C3CED7;
+  --zebra: #F4F7F9;
   --total-bg: #DCE9F7;
   --total-ink: #0F3A66;
   --pago: #FFE14D;
@@ -49,7 +51,7 @@
     --bg: #0A1115; --panel: #121C22; --ink: #E8EEF2; --muted: #93A3AF; --line: #223139;
     --accent: #3CC4B4; --accent-ink: #04201E; --accent-soft: #12332F;
     --topo: #0F1D23; --topo-ink: #E8EEF2; --topo-btn: rgba(255,255,255,.07); --topo-sel: #1C3A38;
-    --sec-contas: #146B66; --sec-cartoes: #4E3A96; --sec-ink: #FFFFFF; --cab: #1A2A33; --total-bg: #142A40; --total-ink: #A8D0FF;
+    --sec-contas: #146B66; --sec-cartoes: #4E3A96; --sec-ink: #FFFFFF; --cab: #1A2A33; --grade: #2E3E49; --zebra: #16222A; --total-bg: #142A40; --total-ink: #A8D0FF;
     --danger: #FF8A7A; --pago: #E9C93A; --pago-ink: #1C1700; color-scheme: dark;
   }
   :root:not([data-theme="light"])[data-pago="verde"] { --pago: #5FD07A; --pago-ink: #052410; }
@@ -208,6 +210,16 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .mini .tt b { background: var(--total-bg); color: var(--total-ink); border-radius: 5px; padding: 0 5px; align-self: flex-start; }
 .kpi.total { background: var(--total-bg); border-color: var(--total-ink); }
 .kpi.total b, .kpi.total .rotulo { color: var(--total-ink); }
+
+/* grade da planilha: linhas e colunas separadas, listras alternadas, divisão no meio do ano */
+.tabela th, .tabela td { border-bottom: 1px solid var(--grade); border-right: 1px solid var(--grade); }
+.tabela tr > :last-child { border-right: 0; }
+.tabela thead th { border-bottom: 2px solid var(--grade); }
+.tabela tbody tr:not(.sep):nth-child(even) td:not(.p):not(.tot) { background: var(--zebra); }
+.tabela tbody tr:not(.sep):nth-child(even) td.fixa { background: var(--zebra); }
+.tabela tr > :nth-child(7) { border-right: 2px solid var(--muted); }
+.tabela tr.sep td { border-right: 0; }
+.tabela tbody tr:not(.sep):hover td { box-shadow: inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
 
 /* cartões */
 .cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
