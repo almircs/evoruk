@@ -318,7 +318,7 @@ function normaliza(d) {
   const n = dadosVazios();
   if (!d || typeof d !== 'object') return n;
   n.config = Object.assign(n.config, d.config || {});
-  n.cartoes = Array.isArray(d.cartoes) ? d.cartoes.filter((c) => c && c.id && c.nome).map((c, i) => ({ id: String(c.id), nome: String(c.nome), dia: c.dia ? +c.dia : null, cor: c.cor || CORES_CARTAO[i % CORES_CARTAO.length], ativo: c.ativo !== false })) : [];
+  n.cartoes = Array.isArray(d.cartoes) ? d.cartoes.filter((c) => c && c.id && c.nome).map((c, i) => ({ id: String(c.id), nome: String(c.nome), dia: c.dia ? +c.dia : null, cor: c.cor || CORES_CARTAO[i % CORES_CARTAO.length], ativo: typeof c.ativo === 'boolean' ? c.ativo : null })) : [];
   for (const [k, m] of Object.entries(d.meses || {})) {
     if (!/^\d{4}-\d{2}$/.test(k) || !m) continue;
     const [a, mm] = k.split('-').map(Number);
@@ -326,6 +326,11 @@ function normaliza(d) {
       contas: (m.contas || []).filter((c) => c && c.nome).map((c) => { const x = { id: String(c.id || novoId('c')), nome: String(c.nome), valor: +c.valor || 0, pago: !!c.pago }; if (c.cartao) x.cartao = String(c.cartao); if (c.dia) x.dia = +c.dia; if (c.avulsa) x.avulsa = true; return x; }),
       compras: (m.compras || []).filter((c) => c && c.cartao).map((c) => { const x = { id: String(c.id || novoId('p')), cartao: String(c.cartao), desc: String(c.desc || ''), valor: +c.valor || 0 }; if (c.parcela) x.parcela = String(c.parcela); if (c.grupo) x.grupo = String(c.grupo); return x; }) };
   }
+  // cartão sem a marcação "em uso": fica em uso se teve lançamento nos últimos 12 meses
+  const h = new Date(); const corte = chave(h.getFullYear() - 1, h.getMonth() + 1);
+  const revisar = !n.config.cartoesRevisados; n.config.cartoesRevisados = true;
+  n.cartoes.forEach((c) => { if (c.ativo === null || (revisar && c.ativo === true)) c.ativo = Object.entries(n.meses).some(([k, m]) => k >= corte && (m.contas.some((x) => x.cartao === c.id) || m.compras.some((x) => x.cartao === c.id))); });
+  if (n.cartoes.length && !n.cartoes.some((c) => c.ativo)) n.cartoes.forEach((c) => { c.ativo = true; });
   return n;
 }
 
