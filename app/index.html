@@ -173,7 +173,7 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .tabela-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tabela { border-collapse: separate; border-spacing: 0; font-size: .85rem; min-width: 100%; }
-.tabela th, .tabela td { padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; text-align: right; }
+.tabela th, .tabela td { padding: 8px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; text-align: right; }
 .tabela th { color: var(--muted); font-weight: 700; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; background: var(--panel); }
 .tabela .fixa { position: sticky; left: 0; background: var(--panel); text-align: left; z-index: 1; max-width: 180px; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--line); }
 .tabela td.p { background: var(--pago); color: var(--pago-ink); }
@@ -264,7 +264,7 @@ const MES3 = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov',
 const CORES_PAGO = { amarelo: ['Amarelo', '#FFE45C'], verde: ['Verde', '#A6EBB4'], azul: ['Azul', '#A9D2FF'], rosa: ['Rosa', '#FFC0DA'] };
 const CORES_CARTAO = ['#0E5E63','#8A05BE','#FF7A00','#1E88E5','#E53935','#11A35B','#A64AC9','#546E7A','#1A237E','#C2185B'];
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const brl0 = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const num2 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const $ = (id) => document.getElementById(id);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function el(tag, props, ...kids) {
@@ -721,18 +721,18 @@ function planilhaAno(a, meses) {
     ...l.cel.map((c, i) => {
       if (!c) return el('td', { text: '' });
       const atr = !c.pago && chave(a, i + 1) < kh;
-      return el('td', { class: 'num clica ' + (c.pago ? 'p' : atr ? 'a' : ''), title: NOMES_MES[i] + (c.pago ? ' · pago' : ' · a pagar'), text: brl0.format(c.valor), onclick: () => { ui.mes = i + 1; ui.aba = 'mes'; desenha(); scrollTo(0, 0); } });
+      return el('td', { class: 'num clica ' + (c.pago ? 'p' : atr ? 'a' : ''), title: NOMES_MES[i] + (c.pago ? ' · pago' : ' · a pagar'), text: num2.format(c.valor), onclick: () => { ui.mes = i + 1; ui.aba = 'mes'; desenha(); scrollTo(0, 0); } });
     }),
-    el('td', { class: 'num', style: 'font-weight:700', text: brl0.format(r2(l.cel.reduce((s, c) => s + (c ? c.valor : 0), 0))) }));
+    el('td', { class: 'num', style: 'font-weight:700', text: num2.format(r2(l.cel.reduce((s, c) => s + (c ? c.valor : 0), 0))) }));
   if (contas.length) { tbody.append(el('tr', { class: 'sep' }, el('td', { class: 'fixa', text: 'Contas' }), el('td', { colspan: 13 }))); contas.forEach((l) => tbody.append(linhaTab(l))); }
   if (cards.length) { tbody.append(el('tr', { class: 'sep' }, el('td', { class: 'fixa', text: 'Cartões' }), el('td', { colspan: 13 }))); cards.forEach((l) => tbody.append(linhaTab(l))); }
   const totMes = meses.map((d) => (d ? totais(d).total : 0));
   const tabela = el('table', { class: 'tabela' },
     el('thead', {}, el('tr', {}, el('th', { class: 'fixa', text: 'Conta' }), ...MES3.map((m) => el('th', { text: m })), el('th', { text: 'Total' }))),
     tbody,
-    el('tfoot', {}, el('tr', {}, el('td', { class: 'fixa', text: 'Total' }), ...totMes.map((v) => el('td', { class: 'num', text: v ? brl0.format(v) : '' })), el('td', { class: 'num', text: brl0.format(r2(totMes.reduce((s, v) => s + v, 0))) }))));
+    el('tfoot', {}, el('tr', {}, el('td', { class: 'fixa', text: 'Total' }), ...totMes.map((v) => el('td', { class: 'num', text: v ? num2.format(v) : '' })), el('td', { class: 'num', text: num2.format(r2(totMes.reduce((s, v) => s + v, 0))) }))));
   return el('section', { class: 'card', 'aria-label': 'Planilha do ano' },
-    el('div', { class: 'secao' }, el('h2', { text: 'Planilha do ano' }), el('span', { class: 'nota', text: 'Colorido = pago · vermelho = atrasado' })),
+    el('div', { class: 'secao' }, el('h2', { text: 'Planilha do ano' }), el('span', { class: 'nota', text: 'Valores em R$ · colorido = pago · vermelho = atrasado' })),
     el('div', { class: 'tabela-wrap' }, tabela));
 }
 
@@ -766,15 +766,15 @@ function telaCartoes() {
       if (!linhas.has(k)) linhas.set(k, { desc: p.desc.replace(/\s*\(?\d+\s*\/\s*\d+\)?$/, '').trim(), cel: Array(12).fill(0) });
       linhas.get(k).cel[i] = r2(linhas.get(k).cel[i] + p.valor); }); }
     const tb = el('tbody', {}, ...[...linhas.values()].map((l) => el('tr', {}, el('td', { class: 'fixa', title: l.desc, text: l.desc }),
-      ...l.cel.map((v, i) => el('td', { class: 'num' + (v ? ' clica' : ''), text: v ? brl0.format(v) : '', onclick: v ? () => { ui.mes = i + 1; ui.aba = 'mes'; const d = mesDoc(a, i + 1); const f = d && d.contas.find((x) => x.cartao === c.id); if (f) ui.aberto[f.id] = true; desenha(); scrollTo(0, 0); } : null })),
-      el('td', { class: 'num', style: 'font-weight:700', text: brl0.format(r2(l.cel.reduce((s, v) => s + v, 0))) }))));
+      ...l.cel.map((v, i) => el('td', { class: 'num' + (v ? ' clica' : ''), text: v ? num2.format(v) : '', onclick: v ? () => { ui.mes = i + 1; ui.aba = 'mes'; const d = mesDoc(a, i + 1); const f = d && d.contas.find((x) => x.cartao === c.id); if (f) ui.aberto[f.id] = true; desenha(); scrollTo(0, 0); } : null })),
+      el('td', { class: 'num', style: 'font-weight:700', text: num2.format(r2(l.cel.reduce((s, v) => s + v, 0))) }))));
     const fat = Array.from({ length: 12 }, (_, i) => { const d = mesDoc(a, i + 1); return d ? r2(d.contas.filter((x) => x.cartao === c.id).reduce((s, x) => s + x.valor, 0)) : 0; });
     out.push(el('section', { class: 'card', 'aria-label': 'Compras do cartão ' + c.nome },
       el('div', { class: 'secao' }, el('h2', {}, el('span', { class: 'ponto', style: 'display:inline-block;margin-right:8px;background:' + c.cor }), 'Compras no ' + c.nome + ' em ' + a),
         el('button', { type: 'button', class: 'link', text: 'Editar cartão', onclick: () => formCartao(c) })),
       linhas.size ? el('div', { class: 'tabela-wrap' }, el('table', { class: 'tabela' },
         el('thead', {}, el('tr', {}, el('th', { class: 'fixa', text: 'Compra' }), ...MES3.map((m) => el('th', { text: m })), el('th', { text: 'Total' }))), tb,
-        el('tfoot', {}, el('tr', {}, el('td', { class: 'fixa', text: 'Fatura' }), ...fat.map((v) => el('td', { class: 'num', text: v ? brl0.format(v) : '' })), el('td', { class: 'num', text: brl0.format(r2(fat.reduce((s, v) => s + v, 0))) })))))
+        el('tfoot', {}, el('tr', {}, el('td', { class: 'fixa', text: 'Fatura' }), ...fat.map((v) => el('td', { class: 'num', text: v ? num2.format(v) : '' })), el('td', { class: 'num', text: num2.format(r2(fat.reduce((s, v) => s + v, 0))) })))))
         : el('p', { class: 'vazio-lista', text: 'Nenhuma compra lançada neste cartão em ' + a + '.' })));
   } else out.push(el('section', { class: 'card vazio' }, el('p', { text: 'Cadastre seus cartões para lançar compras parceladas.' })));
   return out;
