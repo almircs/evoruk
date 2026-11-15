@@ -188,6 +188,11 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .cc { border: 2px solid transparent; text-align: left; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
 .cc[aria-pressed="true"] { border-color: var(--accent); }
+.antigos { margin-top: 14px; }
+.antigos summary { cursor: pointer; font-weight: 700; padding: 8px 2px; }
+.antigos .cartoes { margin-top: 8px; }
+.cc.velho { opacity: .85; }
+.cc.velho strong { color: var(--muted); }
 .cc .faixa { height: 6px; border-radius: 3px; margin-bottom: 6px; }
 .cc strong { font-size: 1rem; }
 .cc small { color: var(--muted); font-size: .8rem; }
@@ -313,7 +318,7 @@ function normaliza(d) {
   const n = dadosVazios();
   if (!d || typeof d !== 'object') return n;
   n.config = Object.assign(n.config, d.config || {});
-  n.cartoes = Array.isArray(d.cartoes) ? d.cartoes.filter((c) => c && c.id && c.nome).map((c, i) => ({ id: String(c.id), nome: String(c.nome), dia: c.dia ? +c.dia : null, cor: c.cor || CORES_CARTAO[i % CORES_CARTAO.length] })) : [];
+  n.cartoes = Array.isArray(d.cartoes) ? d.cartoes.filter((c) => c && c.id && c.nome).map((c, i) => ({ id: String(c.id), nome: String(c.nome), dia: c.dia ? +c.dia : null, cor: c.cor || CORES_CARTAO[i % CORES_CARTAO.length], ativo: c.ativo !== false })) : [];
   for (const [k, m] of Object.entries(d.meses || {})) {
     if (!/^\d{4}-\d{2}$/.test(k) || !m) continue;
     const [a, mm] = k.split('-').map(Number);
@@ -545,7 +550,7 @@ function recalcMeses(ks, cartoesVelhos) {
 }
 function formCompra(d, p, cartaoId) {
   if (!dados.cartoes.length) { avisa('Cadastre um cartão primeiro.'); formCartao(null); return; }
-  const sel = el('select', { id: 'fCartao' }, ...dados.cartoes.slice().sort((a, b) => (a.dia || 99) - (b.dia || 99)).map((c) => el('option', { value: c.id, text: c.nome + (c.dia ? ' · dia ' + c.dia : '') })));
+  const sel = el('select', { id: 'fCartao' }, ...dados.cartoes.filter((c) => c.ativo || (p && p.cartao === c.id) || c.id === cartaoId).sort((a, b) => (a.dia || 99) - (b.dia || 99)).map((c) => el('option', { value: c.id, text: c.nome + (c.dia ? ' · dia ' + c.dia : '') })));
   sel.value = (p && p.cartao) || cartaoId || dados.cartoes[0].id;
   const [pi, pn] = p ? numParcela(p) : [1, 1];
   const campos = [el('label', { for: 'fCartao' }, 'Cartão', sel), campo('O que foi comprado', 'fDesc', { value: p ? p.desc : '', maxlength: 80, placeholder: 'Ex.: Mercado, Tênis' }),
@@ -639,11 +644,13 @@ function formCartao(c) {
   abreFolha(c ? 'Editar cartão' : 'Novo cartão', [
     campo('Nome do cartão', 'fNome', { value: c ? c.nome : '', maxlength: 30, placeholder: 'Ex.: Nubank' }),
     campo('Dia do vencimento', 'fDia', { type: 'number', inputmode: 'numeric', min: 1, max: 31, value: c && c.dia ? c.dia : '' }),
+    marcar('Cartão em uso (aparece ao lançar compras)', 'fAtivo', c ? c.ativo !== false : true),
     el('div', { class: 'nota', text: 'Cor' }), sel], () => {
       const nome = $('fNome').value.trim(); const dv = $('fDia').value.trim(); const dia = dv ? parseInt(dv, 10) : null;
       if (!nome) return 'Digite o nome do cartão.'; if (dv && !(dia >= 1 && dia <= 31)) return 'O dia vai de 1 a 31.';
-      if (c) { Object.assign(dados.cartoes.find((x) => x.id === c.id), { nome, dia, cor }); Object.values(dados.meses).forEach((m) => m.contas.forEach((x) => { if (x.cartao === c.id) x.nome = nome; })); }
-      else dados.cartoes.push({ id: novoId('k'), nome, dia, cor });
+      const ativo = $('fAtivo').checked;
+      if (c) { Object.assign(dados.cartoes.find((x) => x.id === c.id), { nome, dia, cor, ativo }); Object.values(dados.meses).forEach((m) => m.contas.forEach((x) => { if (x.cartao === c.id) x.nome = nome; })); }
+      else dados.cartoes.push({ id: novoId('k'), nome, dia, cor, ativo });
       salvar(); desenha();
     }, extras);
 }
@@ -728,13 +735,23 @@ function planilhaAno(a, meses) {
 function telaCartoes() {
   const a = ui.ano;
   const totCartao = (id) => r2(Array.from({ length: 12 }, (_, i) => mesDoc(a, i + 1)).reduce((s, d) => s + (d ? d.contas.filter((c) => c.cartao === id).reduce((x, c) => x + c.valor, 0) : 0), 0));
-  const lista = dados.cartoes.slice().sort((x, y) => (x.dia || 99) - (y.dia || 99));
-  if (!ui.cartaoSel || !cartao(ui.cartaoSel)) { const usado = lista.find((c) => totCartao(c.id) > 0); ui.cartaoSel = usado ? usado.id : (lista[0] || {}).id || null; }
-  const grade = el('section', { class: 'cartoes', 'aria-label': 'Seus cartões' },
-    ...lista.map((c) => el('button', { type: 'button', class: 'card cc', 'aria-pressed': String(ui.cartaoSel === c.id), onclick: () => { ui.cartaoSel = c.id; desenha(); } },
-      el('div', { class: 'faixa', style: 'background:' + c.cor }), el('strong', { text: c.nome }),
-      el('small', { text: c.dia ? 'Vence dia ' + c.dia : 'Sem dia definido' }), el('b', { class: 'num', text: brl.format(totCartao(c.id)) }), el('small', { text: 'em ' + a }))),
-    el('button', { type: 'button', class: 'card cc', style: 'align-items:center;justify-content:center;color:var(--accent);font-weight:700', text: '+ Novo cartão', onclick: () => formCartao(null) }));
+  const ordena = (l) => l.slice().sort((x, y) => (x.dia || 99) - (y.dia || 99) || x.nome.localeCompare(y.nome, 'pt-BR'));
+  const ativos = ordena(dados.cartoes.filter((c) => c.ativo !== false)), antigos = ordena(dados.cartoes.filter((c) => c.ativo === false));
+  if (!ui.cartaoSel || !cartao(ui.cartaoSel)) { const usado = ativos.find((c) => totCartao(c.id) > 0) || antigos.find((c) => totCartao(c.id) > 0); ui.cartaoSel = usado ? usado.id : (ativos[0] || antigos[0] || {}).id || null; }
+  const botao = (c) => el('button', { type: 'button', class: 'card cc' + (c.ativo === false ? ' velho' : ''), 'aria-pressed': String(ui.cartaoSel === c.id), onclick: () => { ui.cartaoSel = c.id; desenha(); } },
+    el('div', { class: 'faixa', style: 'background:' + c.cor }), el('strong', { text: c.nome }),
+    el('small', { text: c.dia ? 'Vence dia ' + c.dia : 'Sem dia definido' }), el('b', { class: 'num', text: brl.format(totCartao(c.id)) }), el('small', { text: 'em ' + a }));
+  const grade = el('div', {},
+    el('div', { class: 'secao', style: 'padding:0 2px 8px' }, el('h2', { text: 'Cartões em uso' }), el('span', { class: 'nota', text: ativos.length + (ativos.length === 1 ? ' cartão' : ' cartões') })),
+    el('section', { class: 'cartoes', 'aria-label': 'Cartões em uso' }, ...ativos.map(botao),
+      el('button', { type: 'button', class: 'card cc', style: 'align-items:center;justify-content:center;color:var(--accent);font-weight:700', text: '+ Novo cartão', onclick: () => formCartao(null) })));
+  if (antigos.length) {
+    const comMov = antigos.filter((c) => totCartao(c.id) > 0);
+    const det = el('details', { class: 'antigos' }, el('summary', {}, 'Cartões que usei antes (' + antigos.length + ')', comMov.length ? el('span', { class: 'nota', text: ' · ' + comMov.length + ' com lançamentos em ' + a }) : null),
+      el('section', { class: 'cartoes', 'aria-label': 'Cartões antigos' }, ...antigos.map(botao)));
+    if (antigos.some((c) => c.id === ui.cartaoSel)) det.open = true;
+    grade.append(det);
+  }
   const out = [grade];
   const c = cartao(ui.cartaoSel);
   if (c) {
