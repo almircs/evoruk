@@ -221,6 +221,13 @@ main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; 
 .tabela tr.sep td { border-right: 0; }
 .tabela tbody tr:not(.sep):hover td { box-shadow: inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent); }
 
+/* nomes dos itens maiores e em negrito em todas as telas */
+.nome strong { font-weight: 700; font-size: 1.06rem; }
+.compra > span:first-child { font-weight: 700; font-size: .95rem; }
+.compra .parc { font-weight: 400; }
+.tabela tbody td.fixa { font-weight: 700; font-size: .95rem; max-width: 230px; }
+.tabela tr.sep td.fixa { font-size: .75rem; }
+
 /* cartões */
 .cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .cc { border: 2px solid transparent; text-align: left; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
